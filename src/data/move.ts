@@ -12,7 +12,7 @@ import * as Utils from "../utils";
 import { WeatherType } from "./weather";
 import { ArenaTagSide, ArenaTrapTag } from "./arena-tag";
 import { ArenaTagType } from "./enums/arena-tag-type";
-import { UnswappableAbilityAbAttr, UncopiableAbilityAbAttr, UnsuppressableAbilityAbAttr, NoTransformAbilityAbAttr, BlockRecoilDamageAttr, BlockOneHitKOAbAttr, IgnoreContactAbAttr, MaxMultiHitAbAttr, applyAbAttrs, BlockNonDirectDamageAbAttr, applyPreSwitchOutAbAttrs, PreSwitchOutAbAttr, applyPostDefendAbAttrs, PostDefendContactApplyStatusEffectAbAttr } from "./ability";
+import { UnswappableAbilityAbAttr, UncopiableAbilityAbAttr, UnsuppressableAbilityAbAttr, NoTransformAbilityAbAttr, BlockRecoilDamageAttr, BlockOneHitKOAbAttr, IgnoreContactAbAttr, MaxMultiHitAbAttr, applyAbAttrs, BlockNonDirectDamageAbAttr, applyPreSwitchOutAbAttrs, PreSwitchOutAbAttr, applyPostDefendAbAttrs, PostDefendContactApplyStatusEffectAbAttr, ExplosiveMoveImmunityAbAttr } from "./ability";
 import { Abilities } from "./enums/abilities";
 import { allAbilities } from './ability';
 import { PokemonHeldItemModifier } from "../modifier/modifier";
@@ -688,6 +688,27 @@ export class SacrificialAttr extends MoveEffectAttr {
   }
 }
 
+export class HalfHpAttackAttr extends MoveEffectAttr {
+  constructor() {
+    super(true, MoveEffectTrigger.PRE_APPLY);
+  }
+
+  apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
+    if (!super.apply(user, target, move, args))
+      return false;
+
+    user.damageAndUpdate(Math.ceil(user.hp/2), HitResult.OTHER, false, true, true);
+
+    return true;
+  }
+
+  getUserBenefitScore(user: Pokemon, target: Pokemon, move: Move): integer {
+    if (user.isBoss())
+      return -20;
+    return Math.ceil(((1 - user.getHpRatio()) * 10 - 10) * (target.getAttackTypeEffectiveness(move.type) - 0.5));
+  }
+}
+
 export enum MultiHitType {
   _2,
   _2_TO_5,
@@ -777,6 +798,7 @@ export class PlantHealAttr extends WeatherHealAttr {
       case WeatherType.RAIN:
       case WeatherType.SANDSTORM:
       case WeatherType.HAIL:
+      case WeatherType.SNOW:
       case WeatherType.HEAVY_RAIN:
         return 0.25;
       default:
@@ -1141,6 +1163,16 @@ export class ClearTerrainAttr extends MoveEffectAttr {
 
   apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
     return user.scene.arena.trySetTerrain(TerrainType.NONE, true, true);
+  }
+}
+
+export class Explosive extends MoveAttr {
+  getCondition(): MoveConditionFunc {
+    return (user, target, move) => {
+      const cancelled = new Utils.BooleanHolder(false);
+      applyAbAttrs(ExplosiveMoveImmunityAbAttr, target, cancelled);
+      return cancelled.value;
+    }
   }
 }
 
@@ -1756,6 +1788,7 @@ export class AntiSunlightPowerDecreaseAttr extends VariablePowerAttr {
         case WeatherType.RAIN:
         case WeatherType.SANDSTORM:
         case WeatherType.HAIL:
+        case WeatherType.SNOW:
         case WeatherType.HEAVY_RAIN:
           power.value *= 0.5;
           return true;
@@ -1800,6 +1833,28 @@ export class StatChangeCountPowerAttr extends VariablePowerAttr {
     const positiveStats: number = user.summonData.battleStats.reduce((total, stat) => stat > 0 && stat ? total + stat : total, 0);
 
     (args[0] as Utils.NumberHolder).value += positiveStats * 20;
+
+    return true;
+  }
+}
+
+export class PresentPowerAttr extends VariablePowerAttr {
+  apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): boolean {
+
+    const powerSeed = Utils.randSeedInt(100);
+    if (powerSeed <= 40) {
+      (args[0] as Utils.NumberHolder).value = 40;
+    }
+    else if (40 < powerSeed && powerSeed <= 70) {
+      (args[0] as Utils.NumberHolder).value = 80;
+    }
+    else if (70 < powerSeed && powerSeed <= 80) {
+      (args[0] as Utils.NumberHolder).value = 120;
+    }
+    else if (80 < powerSeed && powerSeed <= 100) {
+      target.scene.unshiftPhase(new PokemonHealPhase(target.scene, target.getBattlerIndex(),
+      Math.max(Math.floor(target.getMaxHp() / 4), 1), getPokemonMessage(target, ' regained\nhealth!'), true));
+    }
 
     return true;
   }
@@ -1905,7 +1960,7 @@ export class BlizzardAccuracyAttr extends VariableAccuracyAttr {
     if (!user.scene.arena.weather?.isEffectSuppressed(user.scene)) {
       const accuracy = args[0] as Utils.NumberHolder;
       const weatherType = user.scene.arena.weather?.weatherType || WeatherType.NONE;
-      if (weatherType === WeatherType.HAIL) {
+      if (weatherType === WeatherType.HAIL || weatherType === WeatherType.SNOW) {
         accuracy.value = -1;
         return true;
       }
@@ -2074,6 +2129,7 @@ export class WeatherBallTypeAttr extends VariableMoveTypeAttr {
           type.value = Type.ROCK;
           break;
         case WeatherType.HAIL:
+        case WeatherType.SNOW:
           type.value = Type.ICE;
           break;
         default:
@@ -2828,16 +2884,16 @@ export class NaturePowerAttr extends OverrideMoveEffectAttr {
         case TerrainType.NONE:
           switch (user.scene.arena.biomeType) {
             case Biome.TOWN:
-              moveId = Moves.TRI_ATTACK;
+              moveId = Moves.ROUND;
               break;
             case Biome.METROPOLIS:
-              moveId = Moves.DARK_PULSE;
+              moveId = Moves.TRI_ATTACK;
               break;
             case Biome.SLUM:
               moveId = Moves.SLUDGE_BOMB;
               break;
             case Biome.PLAINS:
-              moveId = Moves.ROUND;
+              moveId = Moves.SILVER_WIND;
               break;
             case Biome.GRASS:
               moveId = Moves.GRASS_KNOT;
@@ -3446,6 +3502,7 @@ export function initMoves() {
     new AttackMove(Moves.WING_ATTACK, "Wing Attack", Type.FLYING, MoveCategory.PHYSICAL, 60, 100, 35, "The target is struck with large, imposing wings spread wide to inflict damage.", -1, 0, 1),
     new StatusMove(Moves.WHIRLWIND, "Whirlwind", Type.NORMAL, -1, 20, "The target is blown away, and a different Pokémon is dragged out. In the wild, this ends a battle against a single Pokémon.", -1, -6, 1)
       .attr(ForceSwitchOutAttr)
+      .attr(HitsTagAttr, BattlerTagType.FLYING, false)
       .hidesTarget()
       .windMove(),
     new AttackMove(Moves.FLY, "Fly", Type.FLYING, MoveCategory.PHYSICAL, 90, 95, 15, "The user flies up into the sky and then strikes its target on the next turn.", -1, 0, 1)
@@ -3540,7 +3597,8 @@ export function initMoves() {
     new AttackMove(Moves.WATER_GUN, "Water Gun", Type.WATER, MoveCategory.SPECIAL, 40, 100, 25, "The target is blasted with a forceful shot of water.", -1, 0, 1),
     new AttackMove(Moves.HYDRO_PUMP, "Hydro Pump", Type.WATER, MoveCategory.SPECIAL, 110, 80, 5, "The target is blasted by a huge volume of water launched under great pressure.", -1, 0, 1),
     new AttackMove(Moves.SURF, "Surf", Type.WATER, MoveCategory.SPECIAL, 90, 100, 15, "The user attacks everything around it by swamping its surroundings with a giant wave.", -1, 0, 1)
-      .target(MoveTarget.ALL_NEAR_OTHERS),
+      .target(MoveTarget.ALL_NEAR_OTHERS)
+      .attr(HitsTagAttr, BattlerTagType.UNDERWATER, true),
     new AttackMove(Moves.ICE_BEAM, "Ice Beam", Type.ICE, MoveCategory.SPECIAL, 90, 100, 10, "The target is struck with an icy-cold beam of energy. This may also leave the target frozen.", 10, 0, 1)
       .attr(StatusEffectAttr, StatusEffect.FREEZE),
     new AttackMove(Moves.BLIZZARD, "Blizzard", Type.ICE, MoveCategory.SPECIAL, 110, 70, 5, "A howling blizzard is summoned to strike opposing Pokémon. This may also leave the opposing Pokémon frozen.", 10, 0, 1)
@@ -3619,7 +3677,8 @@ export function initMoves() {
       .attr(StatusMoveTypeImmunityAttr, Type.GROUND),
     new AttackMove(Moves.THUNDER, "Thunder", Type.ELECTRIC, MoveCategory.SPECIAL, 110, 70, 10, "A wicked thunderbolt is dropped on the target to inflict damage. This may also leave the target with paralysis.", 30, 0, 1)
       .attr(StatusEffectAttr, StatusEffect.PARALYSIS)
-      .attr(ThunderAccuracyAttr),
+      .attr(ThunderAccuracyAttr)
+      .attr(HitsTagAttr, BattlerTagType.FLYING, false),
     new AttackMove(Moves.ROCK_THROW, "Rock Throw", Type.ROCK, MoveCategory.PHYSICAL, 50, 90, 15, "The user picks up and throws a small rock at the target to attack.", -1, 0, 1)
       .makesContact(false),
     new AttackMove(Moves.EARTHQUAKE, "Earthquake", Type.GROUND, MoveCategory.PHYSICAL, 100, 100, 10, "The user sets off an earthquake that strikes every Pokémon around it.", -1, 0, 1)
@@ -3629,6 +3688,7 @@ export function initMoves() {
     new AttackMove(Moves.FISSURE, "Fissure", Type.GROUND, MoveCategory.PHYSICAL, -1, 30, 5, "The user opens up a fissure in the ground and drops the target in. The target faints instantly if this attack hits.", -1, 0, 1)
       .attr(OneHitKOAttr)
       .attr(OneHitKOAccuracyAttr)
+      .attr(HitsTagAttr, BattlerTagType.UNDERGROUND, false)
       .makesContact(false),
     new AttackMove(Moves.DIG, "Dig", Type.GROUND, MoveCategory.PHYSICAL, 80, 100, 10, "The user burrows into the ground, then attacks on the next turn.", -1, 0, 1)
       .attr(ChargeAttr, ChargeAnim.DIG_CHARGING, 'dug a hole!', BattlerTagType.UNDERGROUND)
@@ -3698,6 +3758,7 @@ export function initMoves() {
       .attr(CopyMoveAttr)
       .ignoresVirtual(),
     new AttackMove(Moves.SELF_DESTRUCT, "Self-Destruct", Type.NORMAL, MoveCategory.PHYSICAL, 200, 100, 5, "The user attacks everything around it by causing an explosion. The user faints upon using this move.", -1, 0, 1)
+      .attr(Explosive)
       .attr(SacrificialAttr)
       .makesContact(false)
       .target(MoveTarget.ALL_NEAR_OTHERS),
@@ -3788,6 +3849,7 @@ export function initMoves() {
     new AttackMove(Moves.CRABHAMMER, "Crabhammer", Type.WATER, MoveCategory.PHYSICAL, 100, 90, 10, "The target is hammered with a large pincer. Critical hits land more easily.", -1, 0, 1)
       .attr(HighCritAttr),
     new AttackMove(Moves.EXPLOSION, "Explosion", Type.NORMAL, MoveCategory.PHYSICAL, 250, 100, 5, "The user attacks everything around it by causing a tremendous explosion. The user faints upon using this move.", -1, 0, 1)
+      .attr(Explosive)
       .attr(SacrificialAttr)
       .makesContact(false)
       .target(MoveTarget.ALL_NEAR_OTHERS),
@@ -3966,7 +4028,8 @@ export function initMoves() {
       .target(MoveTarget.USER_AND_ALLIES),
     new AttackMove(Moves.RETURN, "Return", Type.NORMAL, MoveCategory.PHYSICAL, -1, 100, 20, "This full-power attack grows more powerful the more the user likes its Trainer.", -1, 0, 2)
       .attr(FriendshipPowerAttr),
-    new AttackMove(Moves.PRESENT, "Present (N)", Type.NORMAL, MoveCategory.PHYSICAL, -1, 90, 15, "The user attacks by giving the target a gift with a hidden trap. It restores HP sometimes, however.", -1, 0, 2)
+    new AttackMove(Moves.PRESENT, "Present", Type.NORMAL, MoveCategory.PHYSICAL, -1, 90, 15, "The user attacks by giving the target a gift with a hidden trap. It restores HP sometimes, however.", -1, 0, 2)
+      .attr(PresentPowerAttr)
       .makesContact(false),
     new AttackMove(Moves.FRUSTRATION, "Frustration", Type.NORMAL, MoveCategory.PHYSICAL, -1, 100, 20, "This full-power attack grows more powerful the less the user likes its Trainer.", -1, 0, 2)
       .attr(FriendshipPowerAttr, true),
@@ -3982,6 +4045,7 @@ export function initMoves() {
     new AttackMove(Moves.MAGNITUDE, "Magnitude", Type.GROUND, MoveCategory.PHYSICAL, -1, 100, 30, "The user attacks everything around it with a ground-shaking quake. Its power varies.", -1, 0, 2)
       .attr(PreMoveMessageAttr, magnitudeMessageFunc)
       .attr(MagnitudePowerAttr)
+      .attr(HitsTagAttr, BattlerTagType.UNDERGROUND, true)
       .makesContact(false)
       .target(MoveTarget.ALL_NEAR_OTHERS),
     new AttackMove(Moves.DYNAMIC_PUNCH, "Dynamic Punch", Type.FIGHTING, MoveCategory.PHYSICAL, 100, 50, 5, "The user punches the target with full, concentrated power. This confuses the target if it hits.", 100, 0, 2)
@@ -4050,7 +4114,8 @@ export function initMoves() {
     new AttackMove(Moves.ROCK_SMASH, "Rock Smash", Type.FIGHTING, MoveCategory.PHYSICAL, 40, 100, 15, "The user attacks with a punch. This may also lower the target's Defense stat.", 50, 0, 2)
       .attr(StatChangeAttr, BattleStat.DEF, -1),
     new AttackMove(Moves.WHIRLPOOL, "Whirlpool", Type.WATER, MoveCategory.SPECIAL, 35, 85, 15, "The user traps the target in a violent swirling whirlpool for four to five turns.", 100, 0, 2)
-      .attr(TrapAttr, BattlerTagType.WHIRLPOOL),
+      .attr(TrapAttr, BattlerTagType.WHIRLPOOL)
+      .attr(HitsTagAttr, BattlerTagType.UNDERWATER, true),
     new AttackMove(Moves.BEAT_UP, "Beat Up (N)", Type.DARK, MoveCategory.PHYSICAL, -1, 100, 10, "The user gets all party Pokémon to attack the target. The more party Pokémon, the greater the number of attacks.", -1, 0, 2)
       .makesContact(false),
     new AttackMove(Moves.FAKE_OUT, "Fake Out", Type.NORMAL, MoveCategory.PHYSICAL, 40, 100, 10, "This attack hits first and makes the target flinch. It only works the first turn each time the user enters battle.", 100, 3, 3)
@@ -4140,7 +4205,7 @@ export function initMoves() {
     new AttackMove(Moves.SECRET_POWER, "Secret Power (P)", Type.NORMAL, MoveCategory.PHYSICAL, 70, 100, 20, "The additional effects of this attack depend upon where it was used.", 30, 0, 3)
       .makesContact(false),
     new AttackMove(Moves.DIVE, "Dive", Type.WATER, MoveCategory.PHYSICAL, 80, 100, 10, "Diving on the first turn, the user floats up and attacks on the next turn.", -1, 0, 3)
-      .attr(ChargeAttr, ChargeAnim.DIVE_CHARGING, 'hid\nunderwater!', BattlerTagType.UNDERGROUND)
+      .attr(ChargeAttr, ChargeAnim.DIVE_CHARGING, 'hid\nunderwater!', BattlerTagType.UNDERWATER)
       .ignoresVirtual(),
     new AttackMove(Moves.ARM_THRUST, "Arm Thrust", Type.FIGHTING, MoveCategory.PHYSICAL, 15, 100, 20, "The user lets loose a flurry of open-palmed arm thrusts that hit two to five times in a row.", -1, 0, 3)
       .attr(MultiHitAttr),
@@ -4193,7 +4258,7 @@ export function initMoves() {
       .attr(FlinchAttr),
     new AttackMove(Moves.WEATHER_BALL, "Weather Ball", Type.NORMAL, MoveCategory.SPECIAL, 50, 100, 10, "This attack move varies in power and type depending on the weather.", -1, 0, 3)
       .attr(WeatherBallTypeAttr)
-      .attr(MovePowerMultiplierAttr, (user, target, move) => [WeatherType.SUNNY, WeatherType.RAIN, WeatherType.SANDSTORM, WeatherType.HAIL, WeatherType.FOG, WeatherType.HEAVY_RAIN, WeatherType.HARSH_SUN].includes(user.scene.arena.weather?.weatherType) && !user.scene.arena.weather?.isEffectSuppressed(user.scene) ? 2 : 1)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => [WeatherType.SUNNY, WeatherType.RAIN, WeatherType.SANDSTORM, WeatherType.HAIL, WeatherType.SNOW, WeatherType.FOG, WeatherType.HEAVY_RAIN, WeatherType.HARSH_SUN].includes(user.scene.arena.weather?.weatherType) && !user.scene.arena.weather?.isEffectSuppressed(user.scene) ? 2 : 1)
       .ballBombMove(),
     new StatusMove(Moves.AROMATHERAPY, "Aromatherapy (N)", Type.GRASS, -1, 5, "The user releases a soothing scent that heals all status conditions affecting the user's party.", -1, 0, 3)
       .target(MoveTarget.USER_AND_ALLIES),
@@ -4610,6 +4675,7 @@ export function initMoves() {
       .target(MoveTarget.BOTH_SIDES),
     new AttackMove(Moves.SMACK_DOWN, "Smack Down", Type.ROCK, MoveCategory.PHYSICAL, 50, 100, 15, "The user throws a stone or similar projectile to attack the target. A flying Pokémon will fall to the ground when it's hit.", 100, 0, 5)
       .attr(AddBattlerTagAttr, BattlerTagType.IGNORE_FLYING, false, false, 5)
+      .attr(HitsTagAttr, BattlerTagType.FLYING, false)
       .makesContact(false),
     new AttackMove(Moves.STORM_THROW, "Storm Throw", Type.FIGHTING, MoveCategory.PHYSICAL, 60, 100, 10, "The user strikes the target with a fierce blow. This attack always results in a critical hit.", -1, 0, 5)
       .attr(CritOnlyAttr),
@@ -4750,6 +4816,7 @@ export function initMoves() {
     new AttackMove(Moves.HURRICANE, "Hurricane", Type.FLYING, MoveCategory.SPECIAL, 110, 70, 10, "The user attacks by wrapping its opponent in a fierce wind that flies up into the sky. This may also confuse the target.", 30, 0, 5)
       .attr(ThunderAccuracyAttr)
       .attr(ConfuseAttr)
+      .attr(HitsTagAttr, BattlerTagType.FLYING, false)
       .windMove(),
     new AttackMove(Moves.HEAD_CHARGE, "Head Charge", Type.NORMAL, MoveCategory.PHYSICAL, 120, 100, 15, "The user charges its head into its target, using its powerful guard hair. This also damages the user a little.", -1, 0, 5)
       .attr(RecoilAttr),
@@ -4929,6 +4996,7 @@ export function initMoves() {
       .triageMove(),
     new AttackMove(Moves.THOUSAND_ARROWS, "Thousand Arrows", Type.GROUND, MoveCategory.PHYSICAL, 90, 100, 10, "This move also hits opposing Pokémon that are in the air. Those Pokémon are knocked down to the ground.", 100, 0, 6)
       .attr(NeutralDamageAgainstFlyingTypeMultiplierAttr)
+      .attr(HitsTagAttr, BattlerTagType.FLYING, false)
       .makesContact(false)
       .target(MoveTarget.ALL_NEAR_ENEMIES),
     new AttackMove(Moves.THOUSAND_WAVES, "Thousand Waves", Type.GROUND, MoveCategory.PHYSICAL, 90, 100, 10, "The user attacks with a wave that crawls along the ground. Those it hits can't flee from battle.", -1, 0, 6)
@@ -4998,6 +5066,7 @@ export function initMoves() {
     new SelfStatusMove(Moves.BANEFUL_BUNKER, "Baneful Bunker", Type.POISON, -1, 10, "In addition to protecting the user from attacks, this move also poisons any attacker that makes direct contact.", -1, 4, 7)
       .attr(ProtectAttr, BattlerTagType.BANEFUL_BUNKER),
     new AttackMove(Moves.SPIRIT_SHACKLE, "Spirit Shackle (P)", Type.GHOST, MoveCategory.PHYSICAL, 80, 100, 10, "The user attacks while simultaneously stitching the target's shadow to the ground to prevent the target from escaping.", -1, 0, 7)
+      .attr(AddBattlerTagAttr, BattlerTagType.TRAPPED, false, false, 1)
       .makesContact(false),
     new AttackMove(Moves.DARKEST_LARIAT, "Darkest Lariat", Type.DARK, MoveCategory.PHYSICAL, 85, 100, 10, "The user swings both arms and hits the target. The target's stat changes don't affect this attack's damage.", -1, 0, 7)
       .attr(IgnoreOpponentStatChangesAttr),
@@ -5071,8 +5140,8 @@ export function initMoves() {
     new AttackMove(Moves.DRAGON_HAMMER, "Dragon Hammer", Type.DRAGON, MoveCategory.PHYSICAL, 90, 100, 15, "The user uses its body like a hammer to attack the target and inflict damage.", -1, 0, 7),
     new AttackMove(Moves.BRUTAL_SWING, "Brutal Swing", Type.DARK, MoveCategory.PHYSICAL, 60, 100, 20, "The user swings its body around violently to inflict damage on everything in its vicinity.", -1, 0, 7)
       .target(MoveTarget.ALL_NEAR_OTHERS),
-    new StatusMove(Moves.AURORA_VEIL, "Aurora Veil", Type.ICE, -1, 20, "This move reduces damage from physical and special moves for five turns. This can be used only in a hailstorm.", -1, 0, 7)
-      .condition((user, target, move) => user.scene.arena.weather?.weatherType === WeatherType.HAIL && !user.scene.arena.weather?.isEffectSuppressed(user.scene))
+    new StatusMove(Moves.AURORA_VEIL, "Aurora Veil", Type.ICE, -1, 20, "This move reduces damage from physical and special moves for five turns. This can be used only when it is snowing.", -1, 0, 7)
+      .condition((user, target, move) => (user.scene.arena.weather?.weatherType === WeatherType.HAIL || user.scene.arena.weather?.weatherType === WeatherType.SNOW) && !user.scene.arena.weather?.isEffectSuppressed(user.scene))
       .attr(AddArenaTagAttr, ArenaTagType.AURORA_VEIL, 5, true)
       .target(MoveTarget.USER_SIDE),
     /* Unused */
@@ -5120,7 +5189,8 @@ export function initMoves() {
     new AttackMove(Moves.TEN_MILLION_VOLT_THUNDERBOLT, "10,000,000 Volt Thunderbolt (P)", Type.ELECTRIC, MoveCategory.SPECIAL, 195, -1, 1, "The user, Pikachu wearing a cap, powers up a jolt of electricity using its Z-Power and unleashes it. Critical hits land more easily.", -1, 0, 7),
     /* End Unused */
     new AttackMove(Moves.MIND_BLOWN, "Mind Blown", Type.FIRE, MoveCategory.SPECIAL, 150, 100, 5, "The user attacks everything around it by causing its own head to explode. This also damages the user.", -1, 0, 7)
-      .attr(RecoilAttr, true, 0.5)
+      .attr(Explosive)
+      .attr(HalfHpAttackAttr)
       .target(MoveTarget.ALL_NEAR_OTHERS),
     new AttackMove(Moves.PLASMA_FISTS, "Plasma Fists (P)", Type.ELECTRIC, MoveCategory.PHYSICAL, 100, 100, 15, "The user attacks with electrically charged fists. This move changes Normal-type moves to Electric-type moves.", -1, 0, 7)
       .punchingMove(),
@@ -5297,7 +5367,7 @@ export function initMoves() {
     new AttackMove(Moves.ETERNABEAM, "Eternabeam", Type.DRAGON, MoveCategory.SPECIAL, 160, 90, 5, "This is Eternatus's most powerful attack in its original form. The user can't move on the next turn.", -1, 0, 8)
       .attr(RechargeAttr),
     new AttackMove(Moves.STEEL_BEAM, "Steel Beam", Type.STEEL, MoveCategory.SPECIAL, 140, 95, 5, "The user fires a beam of steel that it collected from its entire body. This also damages the user.", -1, 0, 8)
-      .attr(RecoilAttr, true, 0.5),
+      .attr(HalfHpAttackAttr),
     new AttackMove(Moves.EXPANDING_FORCE, "Expanding Force (P)", Type.PSYCHIC, MoveCategory.SPECIAL, 80, 100, 10, "The user attacks the target with its psychic power. This move's power goes up and damages all opposing Pokémon on Psychic Terrain.", -1, 0, 8),
     new AttackMove(Moves.STEEL_ROLLER, "Steel Roller", Type.STEEL, MoveCategory.PHYSICAL, 130, 100, 5, "The user attacks while destroying the terrain. This move fails when the ground hasn't turned into a terrain.", -1, 0, 8)
       .attr(ClearTerrainAttr)
@@ -5314,7 +5384,9 @@ export function initMoves() {
     new AttackMove(Moves.SHELL_SIDE_ARM, "Shell Side Arm (P)", Type.POISON, MoveCategory.SPECIAL, 90, 100, 10, "This move inflicts physical or special damage, whichever will be more effective. This may also poison the target.", 20, 0, 8)
       .attr(ShellSideArmCategoryAttr)
       .attr(StatusEffectAttr, StatusEffect.POISON),
-    new AttackMove(Moves.MISTY_EXPLOSION, "Misty Explosion (P)", Type.FAIRY, MoveCategory.SPECIAL, 100, 100, 5, "The user attacks everything around it and faints upon using this move. This move's power is increased on Misty Terrain.", -1, 0, 8)
+    new AttackMove(Moves.MISTY_EXPLOSION, "Misty Explosion", Type.FAIRY, MoveCategory.SPECIAL, 100, 100, 5, "The user attacks everything around it and faints upon using this move. This move's power is increased on Misty Terrain.", -1, 0, 8)
+      .attr(Explosive)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => user.scene.arena.getTerrainType() === TerrainType.MISTY && target.isGrounded() ? 1.5 : 1)
       .target(MoveTarget.ALL_NEAR_OTHERS),
     new AttackMove(Moves.GRASSY_GLIDE, "Grassy Glide (P)", Type.GRASS, MoveCategory.PHYSICAL, 55, 100, 20, "Gliding on the ground, the user attacks the target. This move always goes first on Grassy Terrain.", -1, 0, 8),
     new AttackMove(Moves.RISING_VOLTAGE, "Rising Voltage", Type.ELECTRIC, MoveCategory.SPECIAL, 70, 100, 20, "The user attacks with electric voltage rising from the ground. This move's power doubles when the target is on Electric Terrain.", -1, 0, 8)
@@ -5582,7 +5654,8 @@ export function initMoves() {
     new AttackMove(Moves.PSYBLADE, "Psyblade", Type.PSYCHIC, MoveCategory.PHYSICAL, 80, 100, 15, "The user rends the target with an ethereal blade. This move's power is boosted by 50 percent if the user is on Electric Terrain.", -1, 0, 9)
       .attr(MovePowerMultiplierAttr, (user, target, move) => user.scene.arena.getTerrainType() === TerrainType.ELECTRIC && user.isGrounded() ? 1.5 : 1)  
       .slicingMove(),
-    new AttackMove(Moves.HYDRO_STEAM, "Hydro Steam (P)", Type.WATER, MoveCategory.SPECIAL, 80, 100, 15, "The user blasts the target with boiling-hot water. This move's power is not lowered in harsh sunlight but rather boosted by 50 percent.", -1, 0, 9),
+    new AttackMove(Moves.HYDRO_STEAM, "Hydro Steam", Type.WATER, MoveCategory.SPECIAL, 80, 100, 15, "The user blasts the target with boiling-hot water. This move's power is not lowered in harsh sunlight but rather boosted by 50 percent.", -1, 0, 9)
+      .attr(MovePowerMultiplierAttr, (user, target, move) => [WeatherType.SUNNY, WeatherType.HARSH_SUN].includes(user.scene.arena.weather?.weatherType) && !user.scene.arena.weather?.isEffectSuppressed(user.scene) ? 1.5 : 1),
     new AttackMove(Moves.RUINATION, "Ruination", Type.DARK, MoveCategory.SPECIAL, 1, 90, 10, "The user summons a ruinous disaster. This cuts the target's HP in half.", -1, 0, 9)
       .attr(TargetHalfHpDamageAttr),
     new AttackMove(Moves.COLLISION_COURSE, "Collision Course", Type.FIGHTING, MoveCategory.PHYSICAL, 100, 100, 5, "The user transforms and crashes to the ground, causing a massive prehistoric explosion. This move's power is boosted more than usual if it's a supereffective hit.", -1, 0, 9)
@@ -5592,13 +5665,13 @@ export function initMoves() {
       .makesContact(),
     new SelfStatusMove(Moves.SHED_TAIL, "Shed Tail (N)", Type.NORMAL, -1, 10, "The user creates a substitute for itself using its own HP before switching places with a party Pokémon in waiting.", -1, 0, 9),
     new StatusMove(Moves.CHILLY_RECEPTION, "Chilly Reception", Type.ICE, -1, 10, "The user tells a chillingly bad joke before switching places with a party Pokémon in waiting. This summons a snowstorm lasting five turns.", -1, 0, 9)
-      .attr(WeatherChangeAttr, WeatherType.HAIL) // Set to Hail for now, if Snow is added in the future, change this
+      .attr(WeatherChangeAttr, WeatherType.SNOW)
       .attr(ForceSwitchOutAttr, true, false)
       .target(MoveTarget.BOTH_SIDES),
     new SelfStatusMove(Moves.TIDY_UP, "Tidy Up (P)", Type.NORMAL, -1, 10, "The user tidies up and removes the effects of Spikes, Stealth Rock, Sticky Web, Toxic Spikes, and Substitute. This also boosts the user's Attack and Speed stats.", 100, 0, 9)
       .attr(StatChangeAttr, [ BattleStat.ATK, BattleStat.SPD ], 1, true),
     new StatusMove(Moves.SNOWSCAPE, "Snowscape", Type.ICE, -1, 10, "The user summons a snowstorm lasting five turns. This boosts the Defense stats of Ice types.", -1, 0, 9)
-      .attr(WeatherChangeAttr, WeatherType.HAIL) // Set to Hail for now, if Snow is added in the future, change this
+      .attr(WeatherChangeAttr, WeatherType.SNOW)
       .target(MoveTarget.BOTH_SIDES),
     new AttackMove(Moves.POUNCE, "Pounce", Type.BUG, MoveCategory.PHYSICAL, 50, 100, 20, "The user attacks by pouncing on the target. This also lowers the target's Speed stat.", 100, 0, 9)
       .attr(StatChangeAttr, BattleStat.SPD, -1),

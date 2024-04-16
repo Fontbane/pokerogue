@@ -523,6 +523,8 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
           ret >>= 1;
         break;
       case Stat.DEF:
+        if (this.isOfType(Type.ICE) && this.scene.arena.weather?.weatherType === WeatherType.SNOW)
+          ret *= 1.5;
         break;
       case Stat.SPATK:
         break;
@@ -534,7 +536,7 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
         if (this.getTag(BattlerTagType.SLOW_START))
           ret >>= 1;
         if (this.status && this.status.effect === StatusEffect.PARALYSIS)
-          ret >>= 2;
+          ret >>= 1;
         break;
     }
     
@@ -1183,7 +1185,8 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
         else {
           if (source.findTag(t => t instanceof TypeBoostTag && (t as TypeBoostTag).boostedType === type))
             power.value *= 1.5;
-          const arenaAttackTypeMultiplier = this.scene.arena.getAttackTypeMultiplier(type, source.isGrounded());
+          const arenaAttackTypeMultiplier = (move.id == Moves.HYDRO_STEAM && this.scene.arena.weather.weatherType==WeatherType.SUNNY)?
+            1 : this.scene.arena.getAttackTypeMultiplier(type, source.isGrounded());
           if (this.scene.arena.getTerrainType() === TerrainType.GRASSY && this.isGrounded() && type === Type.GROUND && move.moveTarget === MoveTarget.ALL_NEAR_OTHERS)
             power.value /= 2;
           applyMoveAttrs(VariablePowerAttr, source, this, move, power);
@@ -1211,7 +1214,7 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
             }
             if (source.getTag(BattlerTagType.CRIT_BOOST))
               critLevel.value += 2;
-            const critChance = Math.ceil(16 / Math.pow(2, critLevel.value));
+            const critChance = [24, 8, 2, 1][Math.max(0, Math.min(critLevel.value, 3))];
             isCritical = !source.getTag(BattlerTagType.NO_CRIT) && (critChance === 1 || !this.scene.randBattleSeedInt(critChance));
             if (isCritical) {
               const blockCrit = new Utils.BooleanHolder(false);
@@ -1296,6 +1299,10 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
           }
 
           applyMoveAttrs(ModifiedDamageAttr, source, this, move, damage);
+
+          if (power.value === 0) {
+            damage.value = 0;
+          }
 
           console.log('damage', damage.value, move.name, power.value, sourceAtk, targetDef);
 
