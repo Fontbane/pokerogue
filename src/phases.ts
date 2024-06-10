@@ -64,6 +64,7 @@ import { TextStyle, addTextObject } from "./ui/text";
 import { Type } from "./data/type";
 import { BerryUsedEvent, EncounterPhaseEvent, MoveUsedEvent, TurnEndEvent, TurnInitEvent } from "./battle-scene-events";
 import { ExpNotification } from "./enums/exp-notification";
+import { ChallengeType, applyChallenges } from "./data/challenge";
 
 
 export class LoginPhase extends Phase {
@@ -1181,12 +1182,14 @@ export class SelectBiomePhase extends BattlePhase {
       this.scene.unshiftPhase(new SwitchBiomePhase(this.scene, nextBiome));
       this.end();
     };
+    console.log("????");
 
     if ((this.scene.gameMode.isClassic && this.scene.gameMode.isWaveFinal(this.scene.currentBattle.waveIndex + 9))
       || (this.scene.gameMode.isDaily && this.scene.gameMode.isWaveFinal(this.scene.currentBattle.waveIndex))
       || (this.scene.gameMode.hasShortBiomes && !(this.scene.currentBattle.waveIndex % 50))) {
       setNextBiome(Biome.END);
-    } else if (this.scene.gameMode.hasRandomBiomes) {
+    } else if (this.scene.gameMode.hasRandomBiomes || applyChallenges(this.scene.gameMode, ChallengeType.RANDOM_BIOMES)) {
+      console.log("Getting random biome");
       setNextBiome(this.generateNextBiome());
     } else if (Array.isArray(biomeLinks[currentBiome])) {
       let biomes: Biome[];

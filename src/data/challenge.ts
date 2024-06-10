@@ -44,6 +44,12 @@ export enum ChallengeType {
    *             [1] {@link FixedBattleConfig} A new fixed battle. It'll be modified if a battle exists.
   */
   FIXED_BATTLES,
+  /**
+   * Adds or modifies the fixed battles in a run
+   * @param args [0] integer The wave to get a battle for
+   *             [1] {@link FixedBattleConfig} A new fixed battle. It'll be modified if a battle exists.
+  */
+  RANDOM_BIOMES,
 }
 
 /**
@@ -405,6 +411,36 @@ export class SingleTypeChallenge extends Challenge {
   }
 }
 
+export class WarpChallenge extends Challenge {
+  constructor() {
+    super(Challenges.WARPED, 1);
+  }
+
+  apply(challengeType: ChallengeType, args:any[]): boolean {
+    console.log(challengeType);
+    switch (challengeType) {
+    case ChallengeType.RANDOM_BIOMES:
+      console.log("Applying warp challenge");
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * @overrides
+   */
+  getDifficulty(): number {
+    return 1;
+  }
+
+  static loadChallenge(source: WarpChallenge | any): WarpChallenge {
+    const newChallenge = new WarpChallenge();
+    newChallenge.value = source.value;
+    newChallenge.severity = source.severity;
+    return newChallenge;
+  }
+}
+
 /**
  * Implements a fresh start challenge.
  */
@@ -560,6 +596,8 @@ export function copyChallenge(source: Challenge | any): Challenge {
     return LowerStarterMaxCostChallenge.loadChallenge(source);
   case Challenges.LOWER_STARTER_POINTS:
     return LowerStarterPointsChallenge.loadChallenge(source);
+  case Challenges.WARPED:
+    return WarpChallenge.loadChallenge(source);
   }
   throw new Error("Unknown challenge copied");
 }
@@ -570,6 +608,7 @@ export function initChallenges() {
   allChallenges.push(
     new SingleGenerationChallenge(),
     new SingleTypeChallenge(),
+    new WarpChallenge(),
     // new LowerStarterMaxCostChallenge(),
     // new LowerStarterPointsChallenge(),
     // new FreshStartChallenge()
