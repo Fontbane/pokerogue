@@ -1041,6 +1041,31 @@ function skipInClassicAfterWave(wave: integer, defaultWeight: integer): Weighted
 function skipInLastClassicWaveOrDefault(defaultWeight: integer) : WeightedModifierTypeWeightFunc {
   return skipInClassicAfterWave(199, defaultWeight);
 }
+
+/**
+ * Function that determines the weight a Potion should have in the rewards pool based on whether you have
+ * mons that are missing BOTH half the flat hit points and half the flat percent that would be restored by the Potion
+ * @param restorePoints The HP this Potion restores (Max Potion and Full Restore are considered 300 for weight purposes)
+ * @param restorePercent The % HP this Potion restores
+ * @param baseWeight The base weight for the reward
+ * @param healStatus Whether this item also heals status (Full Restore)
+ * @returns A {@linkcode WeightedModifierTypeWeightFunc} to be used in the rewards pool
+ */
+function getPotionRewardWeight(restorePoints: integer, restorePercent: integer, baseWeight?: integer, healStatus?: boolean): WeightedModifierTypeWeightFunc {
+  return (party: Pokemon[]) => {
+    const thresholdPts = restorePoints/2;
+    const thresholdPct = 1-restorePercent/200.0;
+    const thresholdPartyMemberCount = Math.min(party.filter(p => (p.getInverseHp() >= thresholdPts && p.getHpRatio() <= thresholdPct) && !p.isFainted()).length, 3);
+    const statusEffectPartyMemberCount = healStatus? Math.min(party.filter(p => p.hp && !!p.status && !p.getHeldItems().some(i => {
+      if (i instanceof Modifiers.TurnStatusEffectModifier) {
+        return (i as Modifiers.TurnStatusEffectModifier).getStatusEffect() === p.status.effect;
+      }
+      return false;
+    })).length, 3): thresholdPartyMemberCount;
+    return Math.floor((thresholdPartyMemberCount+statusEffectPartyMemberCount)/2) * (baseWeight || 1);
+  };
+}
+
 class WeightedModifierType {
   public modifierType: ModifierType;
   public weight: integer | WeightedModifierTypeWeightFunc;
@@ -1264,10 +1289,7 @@ const modifierPool: ModifierPool = {
   [ModifierTier.COMMON]: [
     new WeightedModifierType(modifierTypes.POKEBALL, 6),
     new WeightedModifierType(modifierTypes.RARE_CANDY, 2),
-    new WeightedModifierType(modifierTypes.POTION, (party: Pokemon[]) => {
-      const thresholdPartyMemberCount = Math.min(party.filter(p => (p.getInverseHp() >= 10 || p.getHpRatio() <= 0.875) && !p.isFainted()).length, 3);
-      return thresholdPartyMemberCount * 3;
-    }, 9),
+    new WeightedModifierType(modifierTypes.POTION, getPotionRewardWeight(20, 10, 3), 9),
     new WeightedModifierType(modifierTypes.SUPER_POTION, (party: Pokemon[]) => {
       const thresholdPartyMemberCount = Math.min(party.filter(p => (p.getInverseHp() >= 25 || p.getHpRatio() <= 0.75) && !p.isFainted()).length, 3);
       return thresholdPartyMemberCount;
@@ -1309,24 +1331,9 @@ const modifierPool: ModifierPool = {
     new WeightedModifierType(modifierTypes.SACRED_ASH, (party: Pokemon[]) => {
       return party.filter(p => p.isFainted()).length >= Math.ceil(party.length / 2) ? 1 : 0;
     }, 1),
-    new WeightedModifierType(modifierTypes.HYPER_POTION, (party: Pokemon[]) => {
-      const thresholdPartyMemberCount = Math.min(party.filter(p => (p.getInverseHp() >= 100 || p.getHpRatio() <= 0.625) && !p.isFainted()).length, 3);
-      return thresholdPartyMemberCount * 3;
-    }, 9),
-    new WeightedModifierType(modifierTypes.MAX_POTION, (party: Pokemon[]) => {
-      const thresholdPartyMemberCount = Math.min(party.filter(p => (p.getInverseHp() >= 150 || p.getHpRatio() <= 0.5) && !p.isFainted()).length, 3);
-      return thresholdPartyMemberCount;
-    }, 3),
-    new WeightedModifierType(modifierTypes.FULL_RESTORE, (party: Pokemon[]) => {
-      const statusEffectPartyMemberCount = Math.min(party.filter(p => p.hp && !!p.status && !p.getHeldItems().some(i => {
-        if (i instanceof Modifiers.TurnStatusEffectModifier) {
-          return (i as Modifiers.TurnStatusEffectModifier).getStatusEffect() === p.status.effect;
-        }
-        return false;
-      })).length, 3);
-      const thresholdPartyMemberCount = Math.floor((Math.min(party.filter(p => (p.getInverseHp() >= 150 || p.getHpRatio() <= 0.5) && !p.isFainted()).length, 3) + statusEffectPartyMemberCount) / 2);
-      return thresholdPartyMemberCount;
-    }, 3),
+    new WeightedModifierType(modifierTypes.HYPER_POTION, getPotionRewardWeight(200, 75, 3), 9),
+    new WeightedModifierType(modifierTypes.MAX_POTION, getPotionRewardWeight(300, 100), 3),
+    new WeightedModifierType(modifierTypes.FULL_RESTORE, getPotionRewardWeight(300, 100, 1, true), 3),
     new WeightedModifierType(modifierTypes.ELIXIR, (party: Pokemon[]) => {
       const thresholdPartyMemberCount = Math.min(party.filter(p => p.hp && p.getMoveset().filter(m => m.ppUsed && (m.getMovePp() - m.ppUsed) <= 5).length).length, 3);
       return thresholdPartyMemberCount * 3;
