@@ -21,6 +21,7 @@ import { Moves } from "#enums/moves";
 import { Species } from "#enums/species";
 import { TimeOfDay } from "#enums/time-of-day";
 import { TrainerType } from "#enums/trainer-type";
+import { pokemonPrevolutions } from "#app/data/pokemon-evolutions.js";
 
 export class Arena {
   public scene: BattleScene;
@@ -146,7 +147,14 @@ export class Arena {
       return this.randomSpecies(waveIndex, level, (attempt || 0) + 1);
     }
 
-    const newSpeciesId = ret.getWildSpeciesForLevel(level, true, isBoss, this.scene.gameMode);
+    let newSpeciesId = ret.getWildSpeciesForLevel(level, !this.scene.gameMode.hasNoWildEvolutions, isBoss, this.scene.gameMode);
+    if (this.scene.gameMode.hasNoWildEvolutions) {
+      let s = getPokemonSpecies(newSpeciesId);
+      while (pokemonPrevolutions.hasOwnProperty(s.speciesId)) {
+        s = getPokemonSpecies(pokemonPrevolutions[s.speciesId]);
+      }
+      newSpeciesId = s.speciesId;
+    }
     if (newSpeciesId !== ret.speciesId) {
       console.log("Replaced", Species[ret.speciesId], "with", Species[newSpeciesId]);
       ret = getPokemonSpecies(newSpeciesId);

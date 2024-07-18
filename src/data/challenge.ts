@@ -16,6 +16,8 @@ import { TypeColor, TypeShadow } from "#app/enums/color.js";
 import { Gender } from "./gender";
 import { pokemonEvolutions } from "./pokemon-evolutions";
 import { pokemonFormChanges } from "./pokemon-forms";
+import { EvolutionItemModifierType, ModifierType, PokemonHeldItemModifierType, TmModifierType } from "#app/modifier/modifier-type.js";
+import { ModifierTier } from "#app/modifier/modifier-tier.js";
 
 /**
  * An enum for all the challenge types. The parameter entries on these describe the
@@ -76,6 +78,10 @@ export enum ChallengeType {
    * Modifies what weight AI pokemon have when generating movesets. UNIMPLEMENTED.
    */
   MOVE_WEIGHT,
+  /**
+   * Modifies the modifier reward table.
+   */
+  MODIFIER_WEIGHT,
 }
 
 /**
@@ -386,6 +392,17 @@ export abstract class Challenge {
    * @returns {@link boolean} Whether this function did anything.
    */
   applyMoveWeight(pokemon: Pokemon, moveSource: MoveSourceType, move: Moves, level: Utils.IntegerHolder): boolean {
+    return false;
+  }
+
+  /**
+   * An apply function for MODIFIER_WEIGHT. Derived classes should alter this.
+   * @param modifierType {@link ModifierType} ModifierType having weight altered.
+   * @param tier {@link ModifierTier} The tier the modifier is in on the modifier table.
+   * @param weight {@link Utils.IntegerHolder} The base weight of the modifier
+   * @returns {@link boolean} Whether this function did anything.
+   */
+  applyModifierWeight(modifierType: ModifierType, tier: ModifierTier, weight: Utils.IntegerHolder): boolean {
     return false;
   }
 }
@@ -733,6 +750,57 @@ export class LowerStarterPointsChallenge extends Challenge {
   }
 }
 
+export class NoEvolutionsChallenge extends Challenge {
+  private max_starter_cost = 5;
+  constructor() {
+    super(Challenges.LITTLE_CUP);
+  }
+
+  applyStarterChoice(pokemon: PokemonSpecies, valid: Utils.BooleanHolder, dexAttr: DexAttrProps, soft?: boolean): boolean {
+    const speciesForm = getPokemonSpeciesForm(pokemon.speciesId, dexAttr.formIndex);
+    const isValid = speciesForm.speciesId in pokemonEvolutions
+      && speciesForm.getRootSpeciesId() === speciesForm.speciesId
+      && speciesStarters.hasOwnProperty(pokemon.speciesId)
+      && speciesStarters[pokemon.speciesId] < this.max_starter_cost;
+    valid.value = isValid;
+    return true;
+  }
+
+  applyPokemonInBattle(pokemon: Pokemon, valid: Utils.BooleanHolder): boolean {
+    const speciesForm = pokemon.getSpeciesForm();
+    const isValid = speciesForm.speciesId in pokemonEvolutions
+      && speciesForm.getRootSpeciesId() === speciesForm.speciesId
+      && speciesStarters.hasOwnProperty(speciesForm.speciesId)
+      && speciesStarters[speciesForm.speciesId] < this.max_starter_cost;
+    valid.value = isValid;
+    return true;
+  }
+
+  applyStarterModify(pokemon: Pokemon): boolean {
+    pokemon.pauseEvolutions = true;
+    return true;
+  }
+
+  applyModifierWeight(modifierType: ModifierType, tier: ModifierTier, weight: Utils.IntegerHolder): boolean {
+    if (modifierType instanceof PokemonHeldItemModifierType && modifierType.id === "EVIOLITE") {
+      weight.value = 10;
+      return true;
+    } else if (modifierType instanceof EvolutionItemModifierType || modifierType.id === "MEGA_BRACELET") {
+      weight.value = 0;
+      return true;
+    } else if (modifierType instanceof TmModifierType) {
+      weight.value++;
+      return true;
+    }
+    return false;
+  }
+
+  applyGameModeModify(gameMode: GameMode): boolean {
+    gameMode.hasNoWildEvolutions = true;
+    return true;
+  }
+}
+
 /**
  * Apply all challenges that modify starter choice.
  * @param gameMode {@link GameMode} The current gameMode
@@ -845,6 +913,16 @@ export function applyChallenges(gameMode: GameMode, challengeType: ChallengeType
  * @returns True if any challenge was successfully applied.
  */
 export function applyChallenges(gameMode: GameMode, challengeType: ChallengeType.MOVE_WEIGHT, pokemon: Pokemon, moveSource: MoveSourceType, move: Moves, weight: Utils.IntegerHolder): boolean;
+/**
+ * Apply all challenges that modify the weight of modifiers in the rewards table
+ * @param gameMode {@link GameMode} The current gameMode
+ * @param challengeType {@link ChallengeType} ChallengeType.MODIFIER_WEIGHT
+ * @param modifierType {@link ModifierType} ModifierType having weight altered.
+ * @param tier {@link ModifierTier} The tier the modifier is in on the modifier table.
+ * @param weight {@link Utils.IntegerHolder} The base weight of the modifier
+ * @returns True if any challenge was successfully applied.
+ */
+export function applyChallenges(gameMode: GameMode, challengeType: ChallengeType.MODIFIER_WEIGHT, modifierType: ModifierType, modifierTier: ModifierTier, weight: Utils.IntegerHolder): boolean;
 export function applyChallenges(gameMode: GameMode, challengeType: ChallengeType, ...args: any[]): boolean {
   let ret = false;
   gameMode.challenges.forEach(c => {
@@ -886,6 +964,8 @@ export function applyChallenges(gameMode: GameMode, challengeType: ChallengeType
       case ChallengeType.MOVE_WEIGHT:
         ret ||= c.applyMoveWeight(args[0], args[1], args[2], args[3]);
         break;
+      case ChallengeType.MODIFIER_WEIGHT:
+        ret ||= c.applyModifierWeight(args[0], args[1], args[2]);
       }
     }
   });

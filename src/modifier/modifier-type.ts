@@ -27,6 +27,7 @@ import { BattlerTagType } from "#enums/battler-tag-type";
 import { BerryType } from "#enums/berry-type";
 import { Moves } from "#enums/moves";
 import { Species } from "#enums/species";
+import { applyChallenges, ChallengeType } from "#app/data/challenge.js";
 
 const outputModifierData = false;
 const useMaxWeightForOutput = false;
@@ -1538,7 +1539,18 @@ const modifierPool: ModifierPool = {
     new WeightedModifierType(modifierTypes.MINT, 4),
     new WeightedModifierType(modifierTypes.RARE_EVOLUTION_ITEM, (party: Pokemon[]) => Math.min(Math.ceil(party[0].scene.currentBattle.waveIndex / 15) * 4, 32), 32),
     new WeightedModifierType(modifierTypes.AMULET_COIN, skipInLastClassicWaveOrDefault(3)),
-    //new WeightedModifierType(modifierTypes.EVIOLITE, (party: Pokemon[]) => party.some(p => ((p.getSpeciesForm(true).speciesId in pokemonEvolutions) || (p.isFusion() && (p.getFusionSpeciesForm(true).speciesId in pokemonEvolutions))) && !p.getHeldItems().some(i => i instanceof Modifiers.EvolutionStatBoosterModifier)) ? 10 : 0),
+    new WeightedModifierType(modifierTypes.EVIOLITE, (party: Pokemon[]) => {
+      const hasCompatibleMons = party.some(p => ((p.getSpeciesForm(true).speciesId in pokemonEvolutions) || (p.isFusion() && (p.getFusionSpeciesForm(true).speciesId in pokemonEvolutions))) && !p.getHeldItems().some(i => i instanceof Modifiers.EvolutionStatBoosterModifier));
+      if (!hasCompatibleMons) {
+        return 0;
+      }
+      const weight = new Utils.IntegerHolder(0);
+      applyChallenges(party[0].scene.gameMode, ChallengeType.MODIFIER_WEIGHT, getModifierType(modifierTypes.EVIOLITE), ModifierTier.ULTRA, weight);
+      // if (party[0].scene.gameData.unlocks[Unlockables.EVIOLITE]) {
+      //   return 10;
+      // }
+      return weight.value;
+    }, 10),
     new WeightedModifierType(modifierTypes.SPECIES_STAT_BOOSTER, 12),
     new WeightedModifierType(modifierTypes.TOXIC_ORB, (party: Pokemon[]) => {
       const checkedAbilities = [Abilities.QUICK_FEET, Abilities.GUTS, Abilities.MARVEL_SCALE, Abilities.TOXIC_BOOST, Abilities.POISON_HEAL, Abilities.MAGIC_GUARD];

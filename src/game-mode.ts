@@ -28,6 +28,7 @@ interface GameModeConfig {
   hasRandomBosses?: boolean;
   isSplicedOnly?: boolean;
   isChallenge?: boolean;
+  hasNoWildEvolutions?: boolean;
 }
 
 export class GameMode implements GameModeConfig {
@@ -42,6 +43,7 @@ export class GameMode implements GameModeConfig {
   public hasRandomBosses: boolean;
   public isSplicedOnly: boolean;
   public isChallenge: boolean;
+  public hasNoWildEvolutions: boolean;
   public challenges: Challenge[];
   public battleConfig: FixedBattleConfigs;
 
