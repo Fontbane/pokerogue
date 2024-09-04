@@ -1192,6 +1192,50 @@ export const trainerTypeDialogue: TrainerTypeDialogue = {
       "dialogue:koga_gym.defeat.1"
     ]
   },
+  [TrainerType.HALA_GYM]: {
+    encounter: [
+      "dialogue:hala_gym.encounter.1"
+    ],
+    victory: [
+      "dialogue:hala_gym.victory.1"
+    ],
+    defeat: [
+      "dialogue:hala_gym.defeat.1"
+    ]
+  },
+  [TrainerType.OLIVIA_GYM]: {
+    encounter: [
+      "dialogue:olivia_gym.encounter.1"
+    ],
+    victory: [
+      "dialogue:olivia_gym.victory.1"
+    ],
+    defeat: [
+      "dialogue:olivia_gym.defeat.1"
+    ]
+  },
+  [TrainerType.NANU]: {
+    encounter: [
+      "dialogue:nanu.encounter.1"
+    ],
+    victory: [
+      "dialogue:nanu.victory.1"
+    ],
+    defeat: [
+      "dialogue:nanu.defeat.1"
+    ]
+  },
+  [TrainerType.HAPU]: {
+    encounter: [
+      "dialogue:hapu.encounter.1"
+    ],
+    victory: [
+      "dialogue:hapu.victory.1"
+    ],
+    defeat: [
+      "dialogue:hapu.defeat.1"
+    ]
+  },
   [TrainerType.SABRINA]: {
     encounter: [
       "dialogue:sabrina.encounter.1",

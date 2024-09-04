@@ -352,6 +352,12 @@ export class TrainerConfig {
     case TrainerType.KOGA_GYM:
       trainerType = TrainerType.KOGA;
       break;
+    case TrainerType.HALA_GYM:
+      trainerType = TrainerType.HALA;
+      break;
+    case TrainerType.OLIVIA_GYM:
+      trainerType = TrainerType.OLIVIA;
+      break;
     }
 
     return trainerType;
@@ -1113,6 +1119,10 @@ export const signatureSpecies: SignatureSpecies = {
   VALERIE: [Species.SYLVEON, Species.MAWILE, Species.MR_MIME],
   OLYMPIA: [Species.ESPURR, Species.SIGILYPH, Species.SLOWKING],
   WULFRIC: [Species.BERGMITE, Species.SNOVER, Species.CRYOGONAL],
+  HALA_GYM: [Species.CRABRAWLER, Species.MAKUHITA, Species.MANKEY],
+  OLIVIA_GYM: [Species.ROCKRUFF, Species.LILEEP, Species.ANORITH],
+  NANU_GYM: [Species.ALOLA_MEOWTH, Species.SABLEYE, Species.SANDILE],
+  HAPU_GYM: [Species.MUDBRAY, Species.GOLETT, Species.SHELLOS],
   MILO: [Species.GOSSIFLEUR, Species.APPLIN, Species.BOUNSWEET],
   NESSA: [Species.CHEWTLE, Species.ARROKUDA, Species.WIMPOD],
   KABU: [Species.SIZZLIPEDE, Species.GROWLITHE, Species.TORKOAL],
@@ -1158,7 +1168,7 @@ export const signatureSpecies: SignatureSpecies = {
   DRASNA: [Species.DRAGALGE, Species.DRUDDIGON, Species.ALTARIA, Species.NOIVERN],
   HALA: [Species.HARIYAMA, Species.BEWEAR, Species.CRABOMINABLE, [Species.POLIWRATH, Species.ANNIHILAPE]],
   MOLAYNE: [Species.KLEFKI, Species.MAGNEZONE, Species.METAGROSS, Species.ALOLA_DUGTRIO],
-  OLIVIA: [Species.RELICANTH, Species.CARBINK, Species.ALOLA_GOLEM, Species.LYCANROC],
+  OLIVIA: [[Species.RELICANTH, Species.GIGALITH], Species.CARBINK, Species.ALOLA_GOLEM, Species.LYCANROC],
   ACEROLA: [[Species.BANETTE, Species.DRIFBLIM], Species.MIMIKYU, Species.DHELMISE, Species.PALOSSAND],
   KAHILI: [[Species.BRAVIARY, Species.MANDIBUZZ], Species.HAWLUCHA, Species.ORICORIO, Species.TOUCANNON],
   MARNIE_ELITE: [Species.MORPEKO, Species.LIEPARD, [Species.TOXICROAK, Species.SCRAFTY], Species.GRIMMSNARL],
@@ -1490,6 +1500,10 @@ export const trainerConfigs: TrainerConfigs = {
   [TrainerType.VALERIE]: new TrainerConfig(++t).initForGymLeader(signatureSpecies["VALERIE"], false, Type.FAIRY).setMixedBattleBgm("battle_kalos_gym"),
   [TrainerType.OLYMPIA]: new TrainerConfig(++t).initForGymLeader(signatureSpecies["OLYMPIA"], false, Type.PSYCHIC).setMixedBattleBgm("battle_kalos_gym"),
   [TrainerType.WULFRIC]: new TrainerConfig(++t).initForGymLeader(signatureSpecies["WULFRIC"], true, Type.ICE).setMixedBattleBgm("battle_kalos_gym"),
+  [TrainerType.HALA_GYM]: new TrainerConfig(++t).initForGymLeader(signatureSpecies["HALA_GYM"], true, Type.FIGHTING).setMixedBattleBgm("battle_alola_elite"),
+  [TrainerType.OLIVIA_GYM]: new TrainerConfig(++t).initForGymLeader(signatureSpecies["OLIVIA_GYM"], false, Type.ROCK).setMixedBattleBgm("battle_alola_elite"),
+  [TrainerType.NANU]: new TrainerConfig(++t).initForGymLeader(signatureSpecies["NANU"], true, Type.DARK).setMixedBattleBgm("battle_alola_elite"),
+  [TrainerType.HAPU]: new TrainerConfig(++t).initForGymLeader(signatureSpecies["HAPU"], false, Type.GROUND).setMixedBattleBgm("battle_alola_elite"),
   [TrainerType.MILO]: new TrainerConfig(++t).initForGymLeader(signatureSpecies["MILO"], true, Type.GRASS).setMixedBattleBgm("battle_galar_gym"),
   [TrainerType.NESSA]: new TrainerConfig(++t).setName("Nessa").initForGymLeader(signatureSpecies["NESSA"], false, Type.WATER).setMixedBattleBgm("battle_galar_gym"),
   [TrainerType.KABU]: new TrainerConfig(++t).initForGymLeader(signatureSpecies["KABU"], true, Type.FIRE).setMixedBattleBgm("battle_galar_gym"),

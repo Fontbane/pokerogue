@@ -1795,6 +1795,50 @@
       "1": "I am delighted! Yes, delighted that I could squash you beneath my heel."
     }
   },
+  "hala_gym": {
+    "encounter": {
+      "1": "Old Hala here will be going all out!"
+    },
+    "victory": {
+      "1": "Whoa! Well played!"
+    },
+    "defeat": {
+      "1": "Haha! What a delightful battle!"
+    }
+  },
+  "olivia_gym": {
+    "encounter": {
+      "1": "We're gonna give you guys everything we've got!"
+    },
+    "victory": {
+      "1": "How lovely."
+    },
+    "defeat": {
+      "1": "Looks like you weren't prepared well enough!"
+    }
+  },
+  "nanu": {
+    "encounter": {
+      "1": "Don't take this battle too serious, now."
+    },
+    "victory": {
+      "1": "Hmmph..."
+    },
+    "defeat": {
+      "1": "Run back home, kid."
+    }
+  },
+  "hapu": {
+    "encounter": {
+      "1": "I will battle you with everything that I have got!"
+    },
+    "victory": {
+      "1": "Thud! That's the sound of your strength rocking me to my core!"
+    },
+    "defeat": {
+      "1": "That was enjoyable."
+    }
+  },
   "hala": {
     "encounter": {
       "1": "Old Hala is here to make you holler!"
