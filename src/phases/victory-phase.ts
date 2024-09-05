@@ -1,7 +1,7 @@
 import BattleScene from "#app/battle-scene.js";
 import { BattlerIndex, BattleType } from "#app/battle.js";
 import { modifierTypes } from "#app/modifier/modifier-type.js";
-import { ExpShareModifier, ExpBalanceModifier, MultipleParticipantExpBonusModifier, PokemonExpBoosterModifier } from "#app/modifier/modifier.js";
+import { ExpShareModifier, ExpBalanceModifier, MultipleParticipantExpBonusModifier, PokemonExpBoosterModifier, ProduceProductionModifier } from "#app/modifier/modifier.js";
 import * as Utils from "#app/utils.js";
 import Overrides from "#app/overrides";
 import { BattleEndPhase } from "./battle-end-phase";
@@ -136,6 +136,19 @@ export class VictoryPhase extends PokemonPhase {
       if (this.scene.gameMode.isEndless || !this.scene.gameMode.isWaveFinal(this.scene.currentBattle.waveIndex)) {
         this.scene.pushPhase(new EggLapsePhase(this.scene));
         if (this.scene.currentBattle.waveIndex % 10) {
+          const doBerryPot = this.scene.applyModifier(ProduceProductionModifier, true, this.scene.currentBattle.waveIndex);
+          if (doBerryPot) {
+            const val = Utils.randSeedInt(256);
+            if (val < 128) { // 50% chance of random Berry
+              this.scene.pushPhase(new ModifierRewardPhase(this.scene, modifierTypes.BERRY));
+            } else if (val < 192) { // 1/4 chance of white herb (add Power Herb here when implemented!)
+              this.scene.pushPhase(new ModifierRewardPhase(this.scene, modifierTypes.WHITE_HERB));
+            } else if (val < 248) { // 7/32 chance of random Mint
+              this.scene.pushPhase(new ModifierRewardPhase(this.scene, modifierTypes.MINT));
+            } else { // 1/32 chance of Reviver Seed
+              this.scene.pushPhase(new ModifierRewardPhase(this.scene, modifierTypes.REVIVER_SEED));
+            }
+          }
           this.scene.pushPhase(new SelectModifierPhase(this.scene));
         } else if (this.scene.gameMode.isDaily) {
           this.scene.pushPhase(new ModifierRewardPhase(this.scene, modifierTypes.EXP_CHARM));

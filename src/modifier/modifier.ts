@@ -2658,6 +2658,33 @@ export class ExtraModifierModifier extends PersistentModifier {
   }
 }
 
+export class ProduceProductionModifier extends PersistentModifier {
+  readonly wavesForProduction: integer = 5;
+  protected obtainWave: integer; // The offset of the wave that should give rewards. For example, 1 gives rewards every 5 waves starting at 1.
+
+  constructor(type: ModifierType, wave: integer, stackCount?: integer) {
+    super(type, stackCount);
+    this.obtainWave = Math.min(wave % this.wavesForProduction, 1); // If Berry Pots obtained wave XX5, give rewards on wave XX1/XX6
+  }
+
+  match(modifier: Modifier): boolean {
+    return modifier instanceof ProduceProductionModifier && this.obtainWave === modifier.obtainWave;
+  }
+
+  clone(): ProduceProductionModifier {
+    return new ProduceProductionModifier(this.type, this.obtainWave, this.stackCount);
+  }
+
+  apply(args: any[]): boolean {
+    const waveIndex = args[0] as Utils.IntegerHolder;
+    return !!waveIndex.value && waveIndex.value % this.wavesForProduction === this.obtainWave;
+  }
+
+  getMaxStackCount(scene: BattleScene): integer {
+    return 1;
+  }
+}
+
 export abstract class EnemyPersistentModifier extends PersistentModifier {
   constructor(type: ModifierType, stackCount?: integer) {
     super(type, stackCount);

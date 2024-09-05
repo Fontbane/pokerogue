@@ -1540,6 +1540,7 @@ export const modifierTypes = {
   MYSTERY_ENCOUNTER_BLACK_SLUDGE: () => new ModifierType("modifierType:ModifierType.MYSTERY_ENCOUNTER_BLACK_SLUDGE", "black_sludge", (type, _args) => new Modifiers.HealShopCostModifier(type)),
   MYSTERY_ENCOUNTER_MACHO_BRACE: () => new PokemonHeldItemModifierType("modifierType:ModifierType.MYSTERY_ENCOUNTER_MACHO_BRACE", "macho_brace", (type, args) => new Modifiers.PokemonIncrementingStatModifier(type, (args[0] as Pokemon).id)),
   MYSTERY_ENCOUNTER_GOLDEN_BUG_NET: () => new ModifierType("modifierType:ModifierType.MYSTERY_ENCOUNTER_GOLDEN_BUG_NET", "golden_net", (type, _args) => new Modifiers.BoostBugSpawnModifier(type)),
+  MYSTERY_ENCOUNTER_BERRY_POT: () => new ModifierType("modifierType:ModifierType.MYSTERY_ENCOUNTER_BERRY_POT", "berry_pot", (type, args) => new Modifiers.ProduceProductionModifier(type, (args[0] as Utils.IntegerHolder).value)),
 };
 
 interface ModifierPool {
