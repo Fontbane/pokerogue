@@ -4,7 +4,6 @@ import { Species } from "#enums/species";
 import GameManager from "#test/utils/gameManager";
 import Phase from "phaser";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { SPLASH_ONLY } from "../utils/testUtils";
 import { BattleEndPhase } from "#app/phases/battle-end-phase";
 import { TempCritBoosterModifier } from "#app/modifier/modifier";
 import { Mode } from "#app/ui/ui";
@@ -13,6 +12,7 @@ import { Button } from "#app/enums/buttons";
 import { CommandPhase } from "#app/phases/command-phase";
 import { NewBattlePhase } from "#app/phases/new-battle-phase";
 import { TurnInitPhase } from "#app/phases/turn-init-phase";
+import { ShopCursorTarget } from "#app/enums/shop-cursor-target";
 
 describe("Items - Dire Hit", () => {
   let phaserGame: Phaser.Game;
@@ -33,7 +33,7 @@ describe("Items - Dire Hit", () => {
 
     game.override
       .enemySpecies(Species.MAGIKARP)
-      .enemyMoveset(SPLASH_ONLY)
+      .enemyMoveset(Moves.SPLASH)
       .moveset([ Moves.POUND ])
       .startingHeldItems([{ name: "DIRE_HIT" }])
       .battleType("single")
@@ -71,14 +71,14 @@ describe("Items - Dire Hit", () => {
     await game.phaseInterceptor.to(BattleEndPhase);
 
     const modifier = game.scene.findModifier(m => m instanceof TempCritBoosterModifier) as TempCritBoosterModifier;
-    expect(modifier.getBattlesLeft()).toBe(4);
+    expect(modifier.getBattleCount()).toBe(4);
 
     // Forced DIRE_HIT to spawn in the first slot with override
     game.onNextPrompt("SelectModifierPhase", Mode.MODIFIER_SELECT, () => {
       const handler = game.scene.ui.getHandler() as ModifierSelectUiHandler;
       // Traverse to first modifier slot
-      handler.processInput(Button.LEFT);
-      handler.processInput(Button.UP);
+      handler.setCursor(0);
+      handler.setRowCursor(ShopCursorTarget.REWARDS);
       handler.processInput(Button.ACTION);
     }, () => game.isCurrentPhase(CommandPhase) || game.isCurrentPhase(NewBattlePhase), true);
 
@@ -89,7 +89,7 @@ describe("Items - Dire Hit", () => {
     for (const m of game.scene.modifiers) {
       if (m instanceof TempCritBoosterModifier) {
         count++;
-        expect((m as TempCritBoosterModifier).getBattlesLeft()).toBe(5);
+        expect((m as TempCritBoosterModifier).getBattleCount()).toBe(5);
       }
     }
     expect(count).toBe(1);

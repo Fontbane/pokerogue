@@ -2,6 +2,8 @@ import { updateUserInfo } from "#app/account";
 import { BattlerIndex } from "#app/battle";
 import BattleScene from "#app/battle-scene";
 import { BattleStyle } from "#app/enums/battle-style";
+import { Moves } from "#app/enums/moves";
+import { getMoveTargets } from "#app/data/move";
 import { EnemyPokemon, PlayerPokemon } from "#app/field/pokemon";
 import Trainer from "#app/field/trainer";
 import { GameModes, getGameMode } from "#app/game-mode";
@@ -9,6 +11,7 @@ import { ModifierTypeOption, modifierTypes } from "#app/modifier/modifier-type";
 import overrides from "#app/overrides";
 import { CommandPhase } from "#app/phases/command-phase";
 import { EncounterPhase } from "#app/phases/encounter-phase";
+import { EnemyCommandPhase } from "#app/phases/enemy-command-phase";
 import { FaintPhase } from "#app/phases/faint-phase";
 import { LoginPhase } from "#app/phases/login-phase";
 import { MovePhase } from "#app/phases/move-phase";
@@ -21,7 +24,6 @@ import { TurnInitPhase } from "#app/phases/turn-init-phase";
 import { TurnStartPhase } from "#app/phases/turn-start-phase";
 import ErrorInterceptor from "#app/test/utils/errorInterceptor";
 import InputsHandler from "#app/test/utils/inputsHandler";
-import { MockClock } from "#app/test/utils/mocks/mockClock";
 import CommandUiHandler from "#app/ui/command-ui-handler";
 import ModifierSelectUiHandler from "#app/ui/modifier-select-ui-handler";
 import PartyUiHandler from "#app/ui/party-ui-handler";
@@ -47,6 +49,12 @@ import { OverridesHelper } from "./helpers/overridesHelper";
 import { SettingsHelper } from "./helpers/settingsHelper";
 import { ReloadHelper } from "./helpers/reloadHelper";
 import { CheckSwitchPhase } from "#app/phases/check-switch-phase";
+import BattleMessageUiHandler from "#app/ui/battle-message-ui-handler";
+import { MysteryEncounterPhase } from "#app/phases/mystery-encounter-phases";
+import { expect } from "vitest";
+import { MysteryEncounterType } from "#enums/mystery-encounter-type";
+import { isNullOrUndefined } from "#app/utils";
+import { ExpGainsSpeed } from "#app/enums/exp-gains-speed";
 
 /**
  * Class to manage the game state and transitions between phases.
@@ -73,7 +81,7 @@ export default class GameManager {
   constructor(phaserGame: Phaser.Game, bypassLogin: boolean = true) {
     localStorage.clear();
     ErrorInterceptor.getInstance().clear();
-    BattleScene.prototype.randBattleSeedInt = (arg) => arg-1;
+    BattleScene.prototype.randBattleSeedInt = (range, min: number = 0) => min + range - 1; // This simulates a max roll
     this.gameWrapper = new GameWrapper(phaserGame, bypassLogin);
     this.scene = new BattleScene();
     this.phaseInterceptor = new PhaseInterceptor(this.scene);
@@ -86,6 +94,9 @@ export default class GameManager {
     this.challengeMode = new ChallengeModeHelper(this);
     this.settings = new SettingsHelper(this);
     this.reload = new ReloadHelper(this);
+
+    // Disables Mystery Encounters on all tests (can be overridden at test level)
+    this.override.mysteryEncounterChance(0);
   }
 
   /**
@@ -138,7 +149,7 @@ export default class GameManager {
     this.scene.gameSpeed = 5;
     this.scene.moveAnimations = false;
     this.scene.showLevelUpStats = false;
-    this.scene.expGainsSpeed = 3;
+    this.scene.expGainsSpeed = ExpGainsSpeed.SKIP;
     this.scene.expParty = ExpNotification.SKIP;
     this.scene.hpBarSpeed = 3;
     this.scene.enableTutorials = false;
@@ -174,6 +185,39 @@ export default class GameManager {
 
     await this.phaseInterceptor.to(EncounterPhase);
     console.log("===finished run to final boss encounter===");
+  }
+
+  /**
+   * Runs the game to a mystery encounter phase.
+   * @param encounterType if specified, will expect encounter to have been spawned
+   * @param species Optional array of species for party.
+   * @returns A promise that resolves when the EncounterPhase ends.
+   */
+  async runToMysteryEncounter(encounterType?: MysteryEncounterType, species?: Species[]) {
+    if (!isNullOrUndefined(encounterType)) {
+      this.override.disableTrainerWaves();
+      this.override.mysteryEncounter(encounterType!);
+    }
+
+    await this.runToTitle();
+
+    this.onNextPrompt("TitlePhase", Mode.TITLE, () => {
+      this.scene.gameMode = getGameMode(GameModes.CLASSIC);
+      const starters = generateStarter(this.scene, species);
+      const selectStarterPhase = new SelectStarterPhase(this.scene);
+      this.scene.pushPhase(new EncounterPhase(this.scene, false));
+      selectStarterPhase.initBattle(starters);
+    }, () => this.isCurrentPhase(EncounterPhase));
+
+    this.onNextPrompt("EncounterPhase", Mode.MESSAGE, () => {
+      const handler = this.scene.ui.getHandler() as BattleMessageUiHandler;
+      handler.processInput(Button.ACTION);
+    }, () => this.isCurrentPhase(MysteryEncounterPhase), true);
+
+    await this.phaseInterceptor.run(EncounterPhase);
+    if (!isNullOrUndefined(encounterType)) {
+      expect(this.scene.currentBattle?.mysteryEncounter?.encounterType).toBe(encounterType);
+    }
   }
 
   /**
@@ -243,7 +287,34 @@ export default class GameManager {
     }, () => this.isCurrentPhase(CommandPhase) || this.isCurrentPhase(NewBattlePhase) || this.isCurrentPhase(CheckSwitchPhase));
   }
 
-  forceOpponentToSwitch() {
+  /**
+   * Forces the next enemy selecting a move to use the given move in its moveset against the
+   * given target (if applicable).
+   * @param moveId {@linkcode Moves} the move the enemy will use
+   * @param target {@linkcode BattlerIndex} the target on which the enemy will use the given move
+   */
+  async forceEnemyMove(moveId: Moves, target?: BattlerIndex) {
+    // Wait for the next EnemyCommandPhase to start
+    await this.phaseInterceptor.to(EnemyCommandPhase, false);
+    const enemy = this.scene.getEnemyField()[(this.scene.getCurrentPhase() as EnemyCommandPhase).getFieldIndex()];
+    const legalTargets = getMoveTargets(enemy, moveId);
+
+    vi.spyOn(enemy, "getNextMove").mockReturnValueOnce({
+      move: moveId,
+      targets: (target && !legalTargets.multiple && legalTargets.targets.includes(target))
+        ? [target]
+        : enemy.getNextTargets(moveId)
+    });
+
+    /**
+     * Run the EnemyCommandPhase to completion.
+     * This allows this function to be called consecutively to
+     * force a move for each enemy in a double battle.
+     */
+    await this.phaseInterceptor.to(EnemyCommandPhase);
+  }
+
+  forceEnemyToSwitch() {
     const originalMatchupScore = Trainer.prototype.getPartyMemberMatchupScores;
     Trainer.prototype.getPartyMemberMatchupScores = () => {
       Trainer.prototype.getPartyMemberMatchupScores = originalMatchupScore;
@@ -330,12 +401,10 @@ export default class GameManager {
   }
 
   async killPokemon(pokemon: PlayerPokemon | EnemyPokemon) {
-    (this.scene.time as MockClock).overrideDelay = 0.01;
     return new Promise<void>(async (resolve, reject) => {
       pokemon.hp = 0;
       this.scene.pushPhase(new FaintPhase(this.scene, pokemon.getBattlerIndex(), true));
       await this.phaseInterceptor.to(FaintPhase).catch((e) => reject(e));
-      (this.scene.time as MockClock).overrideDelay = undefined;
       resolve();
     });
   }
