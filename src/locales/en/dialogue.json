@@ -1905,6 +1905,94 @@
       "1": "I am delighted! Yes, delighted that I could squash you beneath my heel."
     }
   },
+  "kiawe": {
+    "encounter": {
+      "1": "Would you like to burn in battle with me?"
+    },
+    "victory": {
+      "1": "Astounding"
+    },
+    "defeat": {
+      "1": "Not enough dancing!"
+    }
+  },
+  "ilima": {
+    "encounter": {
+      "1": "Behold the magnificent Pokémon of the one and only Ilima!"
+    },
+    "victory": {
+      "1": "You—or should I say you and your Pokémon—make quite the interesting team!"
+    },
+    "defeat": {
+      "1": "I bid you Alola!"
+    }
+  },
+  "lana": {
+    "encounter": {
+      "1": "I don't bother with small fries or losing battles.\nI plan to haul in a big catch when we fight!"
+    },
+    "victory": {
+      "1": "Whoa! Well played!"
+    },
+    "defeat": {
+      "1": "Alola!"
+    }
+  },
+  "mallow": {
+    "encounter": {
+      "1": "Here's today's Mallow Special!"
+    },
+    "victory": {
+      "1": "Abilities must have been the secret ingredient! There are many recipes for battle!"
+    },
+    "defeat": {
+      "1": "You taste defeat when you can't draw out the excellence of your Pokémon."
+    }
+  },
+  "sophocles": {
+    "encounter": {
+      "1": "I believe in my Pokémon's strength...\nI trained them together with Big Mo, after all!"
+    },
+    "victory": {
+      "1": "I couldn't get it done. Don't worry about it, my precious Pokémon..."
+    },
+    "defeat": {
+      "1": "Alola!"
+    }
+  },
+  "mina": {
+    "encounter": {
+      "1": "Time for Mina to show you her full power!"
+    },
+    "victory": {
+      "1": "Whoa! I'm shocked at your strength!"
+    },
+    "defeat": {
+      "1": "Alola!"
+    }
+  },
+  "acerola_gym": {
+    "encounter": {
+      "1": "Battling is just plain fun! Come on, I can take you!"
+    },
+    "victory": {
+      "1": "I... I'm speechless! How did you do it?"
+    },
+    "defeat": {
+      "1": "Alola!"
+    }
+  },
+  "molayne_gym": {
+    "encounter": {
+      "1": "Let's see what kind of trainer you are!"
+    },
+    "victory": {
+      "1": "Looks like you're a good trainer."
+    },
+    "defeat": {
+      "1": "Alola!"
+    }
+  },
   "hala_gym": {
     "encounter": {
       "1": "Old Hala here will be going all out!"
@@ -2172,7 +2260,7 @@
   },
   "acerola": {
     "encounter": {
-      "1": "Battling is just plain fun! Come on, I can take you!"
+      "1": "I'll have to battle hard enough to make up for Uncle Nanu not being here!"
     },
     "victory": {
       "1": "I'm… I'm speechless! How did you do it?!"

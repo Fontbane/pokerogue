@@ -502,6 +502,8 @@ export const classicFixedBattles: FixedBattleConfigs = {
     .setGetTrainerFunc(scene => new Trainer(scene, TrainerType.YOUNGSTER, Utils.randSeedInt(2) ? TrainerVariant.FEMALE : TrainerVariant.DEFAULT)),
   [8]: new FixedBattleConfig().setBattleType(BattleType.TRAINER)
     .setGetTrainerFunc(scene => new Trainer(scene, TrainerType.RIVAL, scene.gameData.gender === PlayerGender.MALE ? TrainerVariant.FEMALE : TrainerVariant.DEFAULT)),
+  [12]: new FixedBattleConfig().setBattleType(BattleType.TRAINER)
+    .setGetTrainerFunc(getRandomTrainerFunc([ TrainerType.ILIMA, TrainerType.MINA, TrainerType.LANA, TrainerType.SOPHOCLES, TrainerType.MALLOW, TrainerType.KIAWE ], true)),
   [25]: new FixedBattleConfig().setBattleType(BattleType.TRAINER)
     .setGetTrainerFunc(scene => new Trainer(scene, TrainerType.RIVAL_2, scene.gameData.gender === PlayerGender.MALE ? TrainerVariant.FEMALE : TrainerVariant.DEFAULT)),
   [35]: new FixedBattleConfig().setBattleType(BattleType.TRAINER)

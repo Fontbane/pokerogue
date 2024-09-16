@@ -1322,6 +1322,94 @@ export const trainerTypeDialogue: TrainerTypeDialogue = {
       "dialogue:koga_gym.defeat.1"
     ]
   },
+  [TrainerType.ILIMA]: {
+    encounter: [
+      "dialogue:ilima.encounter.1"
+    ],
+    victory: [
+      "dialogue:ilima.victory.1"
+    ],
+    defeat: [
+      "dialogue:ilima.defeat.1"
+    ]
+  },
+  [TrainerType.LANA]: {
+    encounter: [
+      "dialogue:lana.encounter.1"
+    ],
+    victory: [
+      "dialogue:lana.victory.1"
+    ],
+    defeat: [
+      "dialogue:lana.defeat.1"
+    ]
+  },
+  [TrainerType.KIAWE]: {
+    encounter: [
+      "dialogue:kiawe.encounter.1"
+    ],
+    victory: [
+      "dialogue:kiawe.victory.1"
+    ],
+    defeat: [
+      "dialogue:kiawe.defeat.1"
+    ]
+  },
+  [TrainerType.MALLOW]: {
+    encounter: [
+      "dialogue:mallow.encounter.1"
+    ],
+    victory: [
+      "dialogue:mallow.victory.1"
+    ],
+    defeat: [
+      "dialogue:mallow.defeat.1"
+    ]
+  },
+  [TrainerType.SOPHOCLES]: {
+    encounter: [
+      "dialogue:sophocles.encounter.1"
+    ],
+    victory: [
+      "dialogue:sophocles.victory.1"
+    ],
+    defeat: [
+      "dialogue:sophocles.defeat.1"
+    ]
+  },
+  [TrainerType.MINA]: {
+    encounter: [
+      "dialogue:mina.encounter.1"
+    ],
+    victory: [
+      "dialogue:mina.victory.1"
+    ],
+    defeat: [
+      "dialogue:mina.defeat.1"
+    ]
+  },
+  [TrainerType.MOLAYNE_GYM]: {
+    encounter: [
+      "dialogue:molayne_gym.encounter.1"
+    ],
+    victory: [
+      "dialogue:molayne_gym.victory.1"
+    ],
+    defeat: [
+      "dialogue:molayne_gym.defeat.1"
+    ]
+  },
+  [TrainerType.ACEROLA_GYM]: {
+    encounter: [
+      "dialogue:acerola_gym.encounter.1"
+    ],
+    victory: [
+      "dialogue:acerola_gym.victory.1"
+    ],
+    defeat: [
+      "dialogue:acerola_gym.defeat.1"
+    ]
+  },
   [TrainerType.HALA_GYM]: {
     encounter: [
       "dialogue:hala_gym.encounter.1"
