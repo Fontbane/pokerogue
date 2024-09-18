@@ -1953,7 +1953,7 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
       if (weight === 1 && allMoves[levelMove[1]].power >= 80) { // Assume level 1 moves with 80+ BP are "move reminder" moves and bump their weight
         weight = 40;
       }
-      if (allMoves[levelMove[1]].name.endsWith(" (N)")) {
+      if (allMoves[levelMove[1]].isUnimplemented) {
         weight /= 100;
       } // Unimplemented level up moves are possible to generate, but 1% of their normal chance.
       if (!movePool.some(m => m[0] === levelMove[1])) {
@@ -1977,7 +1977,7 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
             break;
           }
         }
-        if (compatible && !movePool.some(m => m[0] === moveId) && !allMoves[moveId].name.endsWith(" (N)")) {
+        if (compatible && !movePool.some(m => m[0] === moveId) && !allMoves[moveId].isUnimplemented) {
           if (tmPoolTiers[moveId] === ModifierTier.COMMON && this.level >= 15) {
             movePool.push([moveId, 4]);
           } else if (tmPoolTiers[moveId] === ModifierTier.GREAT && this.level >= 30) {
@@ -1991,23 +1991,23 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
       if (this.level >= 60) { // No egg moves below level 60
         for (let i = 0; i < 3; i++) {
           const moveId = speciesEggMoves[this.species.getRootSpeciesId()][i];
-          if (!movePool.some(m => m[0] === moveId) && !allMoves[moveId].name.endsWith(" (N)")) {
+          if (!movePool.some(m => m[0] === moveId) && !allMoves[moveId].isUnimplemented) {
             movePool.push([moveId, 40]);
           }
         }
         const moveId = speciesEggMoves[this.species.getRootSpeciesId()][3];
-        if (this.level >= 170 && !movePool.some(m => m[0] === moveId) && !allMoves[moveId].name.endsWith(" (N)") && !this.isBoss()) { // No rare egg moves before e4
+        if (this.level >= 170 && !movePool.some(m => m[0] === moveId) && !allMoves[moveId].isUnimplemented && !this.isBoss()) { // No rare egg moves before e4
           movePool.push([moveId, 30]);
         }
         if (this.fusionSpecies) {
           for (let i = 0; i < 3; i++) {
             const moveId = speciesEggMoves[this.fusionSpecies.getRootSpeciesId()][i];
-            if (!movePool.some(m => m[0] === moveId) && !allMoves[moveId].name.endsWith(" (N)")) {
+            if (!movePool.some(m => m[0] === moveId) && !allMoves[moveId].isUnimplemented) {
               movePool.push([moveId, 40]);
             }
           }
           const moveId = speciesEggMoves[this.fusionSpecies.getRootSpeciesId()][3];
-          if (this.level >= 170 && !movePool.some(m => m[0] === moveId) && !allMoves[moveId].name.endsWith(" (N)") && !this.isBoss()) {// No rare egg moves before e4
+          if (this.level >= 170 && !movePool.some(m => m[0] === moveId) && !allMoves[moveId].isUnimplemented && !this.isBoss()) {// No rare egg moves before e4
             movePool.push([moveId, 30]);
           }
         }
@@ -4466,7 +4466,7 @@ export class EnemyPokemon extends Pokemon {
              * If this move is unimplemented, or the move is known to fail when used, set its
              * target score to -20
              */
-            if ((move.name.endsWith(" (N)") || !move.applyConditions(this, target, move)) && ![Moves.SUCKER_PUNCH, Moves.UPPER_HAND, Moves.THUNDERCLAP].includes(move.id)) {
+            if ((move.isUnimplemented || !move.applyConditions(this, target, move)) && ![Moves.SUCKER_PUNCH, Moves.UPPER_HAND, Moves.THUNDERCLAP].includes(move.id)) {
               targetScore = -20;
             } else if (move instanceof AttackMove) {
               /**
@@ -4954,7 +4954,7 @@ export class PokemonMove {
       return false;
     }
 
-    if (this.getMove().name.endsWith(" (N)")) {
+    if (this.getMove().isUnimplemented) {
       return false;
     }
 

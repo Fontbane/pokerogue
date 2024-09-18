@@ -145,6 +145,9 @@ export default class Move implements Localizable {
   private flags: number = 0;
   private nameAppend: string = "";
 
+  public isPartial: boolean = false;
+  public isUnimplemented: boolean = false;
+
   constructor(id: Moves, type: Type, category: MoveCategory, defaultMoveTarget: MoveTarget, power: number, accuracy: number, pp: number, chance: number, priority: number, generation: number) {
     this.id = id;
     this._type = type;
@@ -371,6 +374,7 @@ export default class Move implements Localizable {
    */
   partial(): this {
     this.nameAppend += " (P)";
+    this.isPartial = true;
     return this;
   }
 
@@ -380,6 +384,7 @@ export default class Move implements Localizable {
    */
   unimplemented(): this {
     this.nameAppend += " (N)";
+    this.isUnimplemented = true;
     return this;
   }
 
@@ -5471,7 +5476,7 @@ export class RandomMovesetMoveAttr extends OverrideMoveEffectAttr {
 export class RandomMoveAttr extends OverrideMoveEffectAttr {
   apply(user: Pokemon, target: Pokemon, move: Move, args: any[]): Promise<boolean> {
     return new Promise(resolve => {
-      const moveIds = Utils.getEnumValues(Moves).filter(m => !allMoves[m].hasFlag(MoveFlags.IGNORE_VIRTUAL) && !allMoves[m].name.endsWith(" (N)"));
+      const moveIds = Utils.getEnumValues(Moves).filter(m => !allMoves[m].hasFlag(MoveFlags.IGNORE_VIRTUAL) && !allMoves[m].isUnimplemented);
       const moveId = moveIds[user.randSeedInt(moveIds.length)];
 
       const moveTargets = getMoveTargets(user, moveId);

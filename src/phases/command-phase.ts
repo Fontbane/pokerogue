@@ -115,7 +115,7 @@ export class CommandPhase extends FieldPhase {
         const errorMessage =
           playerPokemon.isMoveRestricted(move.moveId)
             ? playerPokemon.getRestrictingTag(move.moveId)!.selectionDeniedText(playerPokemon, move.moveId)
-            : move.getName().endsWith(" (N)") ? "battle:moveNotImplemented" : "battle:moveNoPP";
+            : move.isUnimplemented ? "battle:moveNotImplemented" : "battle:moveNoPP";
         const moveName = move.getName().replace(" (N)", ""); // Trims off the indicator
 
         this.scene.ui.showText(i18next.t(errorMessage, { moveName: moveName }), null, () => {
