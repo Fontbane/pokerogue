@@ -2988,6 +2988,8 @@ export default class BattleScene extends SceneBase {
     const expBalanceModifier = this.findModifier(m => m instanceof ExpBalanceModifier) as ExpBalanceModifier;
     const multipleParticipantExpBonusModifier = this.findModifier(m => m instanceof MultipleParticipantExpBonusModifier) as MultipleParticipantExpBonusModifier;
     const nonFaintedPartyMembers = party.filter(p => p.hp);
+    const waveFinal = this.gameMode.isWaveFinal(this.currentBattle.waveIndex);
+    const friendshipPartyMembers = party.filter(p => p.hp || waveFinal);
     const expPartyMembers = nonFaintedPartyMembers.filter(p => p.level < this.getMaxExpLevel());
     const partyMemberExp: number[] = [];
     // EXP value calculation is based off Pokemon.getExpValue
@@ -3001,11 +3003,17 @@ export default class BattleScene extends SceneBase {
       } else if (this.currentBattle.battleType === BattleType.MYSTERY_ENCOUNTER && this.currentBattle.mysteryEncounter) {
         expValue = Math.floor(expValue * this.currentBattle.mysteryEncounter.expMultiplier);
       }
+      for (const partyMember of friendshipPartyMembers) {
+        const pId = partyMember.id;
+        const participated = participantIds.has(pId) || waveFinal;
+        if (participated && pokemonDefeated) {
+          partyMember.addFriendship(waveFinal ? 10 : 2);
+        }
+      }
       for (const partyMember of nonFaintedPartyMembers) {
         const pId = partyMember.id;
         const participated = participantIds.has(pId);
         if (participated && pokemonDefeated) {
-          partyMember.addFriendship(2);
           const machoBraceModifier = partyMember.getHeldItems().find(m => m instanceof PokemonIncrementingStatModifier);
           if (machoBraceModifier && machoBraceModifier.stackCount < machoBraceModifier.getMaxStackCount(this)) {
             machoBraceModifier.stackCount++;
