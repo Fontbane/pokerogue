@@ -133,6 +133,71 @@ export class ModifierBar extends Phaser.GameObjects.Container {
   }
 }
 
+export enum ModifierClass {
+  PERSISTENT,
+  CONSUMABLE,
+  LAPSING_PERSISTENT,
+  HELD_ITEM,
+}
+
+export enum PersistentModifierType {
+  TEAM,
+  HELD_ITEM,
+  PLAYER_TEAM,
+  ENEMY_TEAM,
+  FIELD
+}
+
+export abstract class ModifierConfig {
+  public type: ModifierType;
+  public consumable: boolean;
+  public persistent: boolean;
+}
+
+export abstract class PersistentModifierConfig extends ModifierConfig {
+  public lapsing: boolean;
+  public maxStackCount: number;
+}
+
+export abstract class ConsumableModifierConfig extends ModifierConfig {
+  private count: number;
+  public param: number; //Generic number parameter
+}
+
+export abstract class LapsingPersistentModifierConfig extends PersistentModifierConfig {
+  /** The maximum amount of battles the modifier will exist for */
+  private maxBattles: number;
+}
+
+export abstract class PokemonHeldItemModifierConfig extends PersistentModifierConfig {
+  public isTransferable: boolean = true;
+  public isStealable: boolean = true;
+  public species: Species[] = []; /* For species-exclusive items */
+}
+
+export abstract class LapsingPokemonHeldItemModifierConfig extends LapsingPersistentModifierConfig {
+  public isTransferable: boolean = true;
+  public isStealable: boolean = true;
+}
+
+export class BerryModifierConfig extends PokemonHeldItemModifierConfig {
+  public berryType: BerryType;
+}
+
+export class ChanceHeldItemConfig extends PokemonHeldItemModifierConfig {
+  public chance: number;
+}
+
+export class PersistentItemData {
+  public type: ModifierType;//modifiertype is an enum btw
+  public stackCount: number;
+}
+
+export class PokemonHeldItemData extends PersistentItemData {
+  public pokemonId: number;
+  public state: number;
+}
+
 export abstract class Modifier {
   public type: ModifierType;
 
