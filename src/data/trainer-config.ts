@@ -1365,8 +1365,13 @@ export const trainerConfigs: TrainerConfigs = {
       [TrainerPoolTier.RARE]: [ Species.TAUROS, Species.STANTLER, Species.DARUMAKA, Species.BOUFFALANT, Species.DEERLING, Species.IMPIDIMP ],
       [TrainerPoolTier.SUPER_RARE]: [ Species.GALAR_DARUMAKA, Species.TEDDIURSA ]
     }),
-  [TrainerType.BAKER]: new TrainerConfig(++t).setEncounterBgm(TrainerType.CLERK).setMoneyMultiplier(1.35).setSpeciesFilter(s => s.isOfType(Type.GRASS) || s.isOfType(Type.FIRE)),
-  [TrainerType.BEAUTY]: new TrainerConfig(++t).setMoneyMultiplier(1.55).setEncounterBgm(TrainerType.PARASOL_LADY),
+  [TrainerType.BAKER]: new TrainerConfig(++t).setEncounterBgm(TrainerType.CLERK).setMoneyMultiplier(1.35).setSpeciesFilter(s => s.isOfType(Type.GRASS) || s.isOfType(Type.FIRE) || s.speciesId === Species.FIDOUGH || s.speciesId === Species.DACHSBUN),
+  [TrainerType.BEAUTY]: new TrainerConfig(++t).setMoneyMultiplier(1.55).setEncounterBgm(TrainerType.PARASOL_LADY).setSpeciesPools({
+    [TrainerPoolTier.COMMON]: [ Species.SPRITZEE, Species.SKITTY, Species.BUNEARY, Species.GLAMEOW, Species.MARILL, Species.GOLDEEN, Species.ESPURR ],
+    [TrainerPoolTier.UNCOMMON]: [ Species.MAWILE, Species.ROSELIA, Species.MAREEP, Species.FURFROU, Species.FLITTLE, Species.BLITZLE ],
+    [TrainerPoolTier.RARE]: [ Species.SWABLU, Species.SEVIPER, Species.SALANDIT, Species.BRUXISH, Species.JYNX, Species.SNOM ],
+    [TrainerPoolTier.SUPER_RARE]: [ Species.FEEBAS, Species.CORSOLA ]
+  }),
   [TrainerType.BIKER]: new TrainerConfig(++t).setMoneyMultiplier(1.4).setEncounterBgm(TrainerType.ROUGHNECK).setSpeciesFilter(s => s.isOfType(Type.POISON)),
   [TrainerType.BLACK_BELT]: new TrainerConfig(++t).setHasGenders("Battle Girl", TrainerType.PSYCHIC).setHasDouble("Crush Kin").setEncounterBgm(TrainerType.ROUGHNECK).setSpecialtyTypes(Type.FIGHTING)
     .setPartyTemplates(trainerPartyTemplates.TWO_WEAK_ONE_AVG, trainerPartyTemplates.TWO_WEAK_ONE_AVG, trainerPartyTemplates.TWO_AVG, trainerPartyTemplates.TWO_AVG, trainerPartyTemplates.TWO_WEAK_ONE_STRONG, trainerPartyTemplates.THREE_AVG, trainerPartyTemplates.TWO_AVG_ONE_STRONG)
@@ -1399,9 +1404,9 @@ export const trainerConfigs: TrainerConfigs = {
     .setPartyTemplates(trainerPartyTemplates.TWO_WEAK, trainerPartyTemplates.ONE_AVG, trainerPartyTemplates.TWO_AVG, trainerPartyTemplates.TWO_WEAK_SAME_TWO_WEAK_SAME)
     .setSpeciesPools({
       [TrainerPoolTier.COMMON]: [ Species.RALTS, Species.SPOINK, Species.LOTAD, Species.BUDEW ],
-      [TrainerPoolTier.UNCOMMON]: [ Species.SPINDA, Species.SWABLU, Species.MARACTUS, ],
+      [TrainerPoolTier.UNCOMMON]: [ Species.SPINDA, Species.MARACTUS, Species.PETILIL ],
       [TrainerPoolTier.RARE]: [ Species.BELLOSSOM, Species.HITMONTOP, Species.MIME_JR, Species.ORICORIO ],
-      [TrainerPoolTier.SUPER_RARE]: [ Species.POPPLIO ]
+      [TrainerPoolTier.SUPER_RARE]: [ Species.QUAXLY ]
     }),
   [TrainerType.DEPOT_AGENT]: new TrainerConfig(++t).setMoneyMultiplier(1.45).setEncounterBgm(TrainerType.CLERK),
   [TrainerType.DOCTOR]: new TrainerConfig(++t).setHasGenders("Nurse", "lass").setHasDouble("Medical Team").setMoneyMultiplier(3).setEncounterBgm(TrainerType.CLERK)
