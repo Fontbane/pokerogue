@@ -31,6 +31,7 @@ import i18next from "i18next";
 import { type DoubleBattleChanceBoosterModifierType, type EvolutionItemModifierType, type FormChangeItemModifierType, type ModifierOverride, type ModifierType, type PokemonBaseStatTotalModifierType, type PokemonExpBoosterModifierType, type PokemonFriendshipBoosterModifierType, type PokemonMoveAccuracyBoosterModifierType, type PokemonMultiHitModifierType, type TerastallizeModifierType, type TmModifierType, getModifierType, ModifierPoolType, ModifierTypeGenerator, modifierTypes, PokemonHeldItemModifierType } from "./modifier-type";
 import { Color, ShadowColor } from "#enums/color";
 import { FRIENDSHIP_GAIN_FROM_RARE_CANDY } from "#app/data/balance/starters";
+import { Modifiers } from "./modifiers";
 
 export type ModifierPredicate = (modifier: Modifier) => boolean;
 
@@ -133,6 +134,7 @@ export class ModifierBar extends Phaser.GameObjects.Container {
   }
 }
 
+//#region REWORK
 export enum ModifierClass {
   PERSISTENT,
   CONSUMABLE,
@@ -149,7 +151,7 @@ export enum PersistentModifierType {
 }
 
 export abstract class ModifierConfig {
-  public type: ModifierType;
+  public type;
   public consumable: boolean;
   public persistent: boolean;
 }
@@ -157,6 +159,13 @@ export abstract class ModifierConfig {
 export abstract class PersistentModifierConfig extends ModifierConfig {
   public lapsing: boolean;
   public maxStackCount: number;
+  constructor(type, lapsing:boolean,maxStackCount:number) {
+    this.type = type;
+    this.consumable = false;
+    this.persistent = true;
+    this.lapsing = lapsing;
+    this.maxStackCount = maxStackCount;
+  }
 }
 
 export abstract class ConsumableModifierConfig extends ModifierConfig {
@@ -170,9 +179,21 @@ export abstract class LapsingPersistentModifierConfig extends PersistentModifier
 }
 
 export abstract class PokemonHeldItemModifierConfig extends PersistentModifierConfig {
+  lapsing: false;
+  consumable: false;
+  persistent: true;
+
   public isTransferable: boolean = true;
   public isStealable: boolean = true;
-  public species: Species[] = []; /* For species-exclusive items */
+  public canDisable: boolean = true;
+  public weight: number = 0;
+  public species?: Species[] = []; /* For species-exclusive items */
+
+
+  constructor(type, isTransferable: boolean, isStealable: boolean, canDisable: boolean, maxStackCount: number = 1, weight: number = 0, chance: number = 0, ) {
+    super(type, false, maxStackCount);
+    this.isTransferable = isTransferable;
+  }
 }
 
 export abstract class LapsingPokemonHeldItemModifierConfig extends LapsingPersistentModifierConfig {
@@ -195,8 +216,21 @@ export class PersistentItemData {
 
 export class PokemonHeldItemData extends PersistentItemData {
   public pokemonId: number;
+  public modifierId: number;
   public state: number;
+  public cooldown: number;
+  public disabled: boolean;
 }
+
+interface ModifierConfigEntry {
+  [key: number]: PokemonHeldItemModifierConfig;
+}
+
+export const heldItemConfigs: ModifierConfigEntry = {
+  [Modifiers.FOCUS_BAND]: new PokemonHeldItemModifierConfig(Modifiers.FOCUS_BAND, )
+};
+
+//#endregion REWORK
 
 export abstract class Modifier {
   public type: ModifierType;

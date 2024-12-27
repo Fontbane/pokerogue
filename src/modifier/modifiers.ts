@@ -11,7 +11,7 @@ export enum Modifiers {
     KEY_GOLDEN_BUG_NET,
 
 //  Stackable Player items
-    EXP_CHARM = 20,
+    EXP_CHARM = 101,
     SUPER_EXP_CHARM,
     GOLDEN_EXP_CHARM,
     EXP_ALL,
@@ -28,13 +28,13 @@ export enum Modifiers {
     CANDY_JAR,
 
 //Lapsing Player items
-    LURE = 51,
+    LURE = 201,
     SUPER_LURE,
     MAX_LURE,
     SILVER_POKE_BALL,
 
 //Lapsing Battle Side items
-    X_ATTACK = 61,
+    X_ATTACK = 301,
     X_DEFENSE,
     X_SP_ATK,
     X_SP_DEF,
@@ -42,7 +42,7 @@ export enum Modifiers {
     DIRE_HIT,
 
 // Tokens (evil)
-    TOKEN_DAMAGE_BOOSTER = 71,
+    TOKEN_DAMAGE_BOOSTER = 501,
     TOKEN_DAMAGE_REDUCTION,
     TOKEN_HEAL,
     TOKEN_POISON,
@@ -53,29 +53,29 @@ export enum Modifiers {
     TOKEN_FUSE,
 
 // Vouchers
-    VOUCHER = 85,
+    VOUCHER = 1001,
     VOUCHER_PLUS,
     VOUCHER_PREMIUM,
     VOUCHER_GOLD,
 
 // Treasure items
-    NUGGET = 91,
+    NUGGET = 1100,
     BIG_NUGGET,
     RELIC_GOLD,
 
 // Poke Balls
-    POKE_BALL = 95,
+    POKE_BALL = 1500,
     GREAT_BALL,
     ULTRA_BALL,
     ROGUE_BALL,
     MASTER_BALL,
 
 // Rare Candies
-    RARE_CANDY = 101,
+    RARE_CANDY = 1600,
     RARER_CANDY,
 
 // Healing items
-    POTION = 105,
+    POTION = 1700,
     SUPER_POTION,
     HYPER_POTION,
     MAX_POTION,
@@ -90,7 +90,7 @@ export enum Modifiers {
     SACRED_ASH,
 
 // Mints
-    HARDY_MINT = 120,
+    HARDY_MINT = 2000,
     LONELY_MINT,
     BRAVE_MINT,
     ADAMANT_MINT,
@@ -116,21 +116,6 @@ export enum Modifiers {
     CAREFUL_MINT,
     QUIRKY_MINT,
 
-// Menu-based move teaching items
-    MEMORY_MUSHROOM,
-
-// TMs
-    TM_COMMON = 150,
-    TM_COMMON_RARE,
-    TM_GREAT,
-    TM_GREAT_RARE,
-    TM_ULTRA,
-    TM_ULTRA_RARE,
-    TM_ULTIMATE,
-
-// Other consumable Pokemon modifiers
-    DNA_SPLICERS = 160,
-
 // Vitamins
     HP_UP,
     PROTEIN,
@@ -141,8 +126,23 @@ export enum Modifiers {
     PP_UP,
     PP_MAX,
 
+// Menu-based move teaching items
+    MEMORY_MUSHROOM=2100,
+
+// TMs
+    TM_COMMON = 3000,
+    TM_COMMON_RARE,
+    TM_GREAT,
+    TM_GREAT_RARE,
+    TM_ULTRA,
+    TM_ULTRA_RARE,
+    TM_ULTIMATE,
+
+// Other consumable Pokemon modifiers
+    DNA_SPLICERS = 4000,
+
 // Berries
-    SITRUS_BERRY = 170,
+    SITRUS_BERRY = 4500,
     LUM_BERRY,
     ENIGMA_BERRY,
     LIECHI_BERRY,
@@ -155,11 +155,11 @@ export enum Modifiers {
     LEPPA_BERRY,
 
 // Other consumable held items
-    WHITE_HERB = 190,
+    WHITE_HERB = 5000,
     REVIVER_SEED,
 
 // One-stack held items
-    LEFTOVERS = 201,
+    LEFTOVERS = 6000,
     SHELL_BELL,
     SCOPE_LENS,
     SOOTHE_BELL,
@@ -174,14 +174,8 @@ export enum Modifiers {
     STICKY_GLOB,
     BUDDY_SHIELD,
 
-// Species held items
-    LEEK = 225,
-    LIGHT_BALL,
-    THICK_CLUB,
-    EVOLUTION_TRACKER_GIMMIGHOUL,
-
 // Stackable held items
-    GOLDEN_PUNCH = 230,
+    GOLDEN_PUNCH,
     SOUL_DEW,
     WIDE_LENS,
     QUICK_CLAW,
@@ -193,7 +187,7 @@ export enum Modifiers {
     KINGS_ROCK,
 
 // Attack type boosting items
-    SILK_SCARF = 250,
+    SILK_SCARF = 7000,
     BLACK_BELT,
     SHARP_BEAK,
     POISON_BARB,
@@ -212,14 +206,20 @@ export enum Modifiers {
     BLACK_GLASSES,
     FAIRY_FEATHER,
 
+// Species held items
+    LEEK = 8000,
+    LIGHT_BALL,
+    THICK_CLUB,
+    EVOLUTION_TRACKER_GIMMIGHOUL,
+
     // Pokemon specific items with their own enums
-    EVOLUTION_ITEM = 270,
+    EVOLUTION_ITEM = 10000,
     RARE_EVOLUTION_ITEM,
 
     FORM_CHANGE_ITEM,
     RARE_FORM_CHANGE_ITEM,
 
-    LINKING_CORD = 301,
+    LINKING_CORD,
     SUN_STONE,
     MOON_STONE,
     LEAF_STONE,
@@ -257,14 +257,14 @@ export enum Modifiers {
     SUN_FLUTE,
     MOON_FLUTE,
 
-    BLACK_AUGURITE = 351,
+    BLACK_AUGURITE = 10051,
     PEAT_BLOCK,
     METAL_ALLOY,
     SCROLL_OF_DARKNESS,
     SCROLL_OF_WATERS,
     LEADERS_CREST,
 
-    ABOMASITE = 401,
+    ABOMASITE = 10100,
     ABSOLITE,
     AERODACTYLITE,
     AGGRONITE,
@@ -313,7 +313,7 @@ export enum Modifiers {
     TYRANITARITE,
     VENUSAURITE,
 
-    BLUE_ORB = 451,
+    BLUE_ORB = 10151,
     RED_ORB,
     ADAMANT_CRYSTAL,
     LUSTROUS_GLOBE,
@@ -329,7 +329,7 @@ export enum Modifiers {
     SHADOW_REINS_OF_UNITY,
     ULTRANECROZIUM_Z,
 
-    SHARP_METEORITE = 501,
+    SHARP_METEORITE = 10200,
     HARD_METEORITE,
     SMOOTH_METEORITE,
     GRACIDEA,
