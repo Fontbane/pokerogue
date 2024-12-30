@@ -1,8 +1,8 @@
 import { BattleType } from "../battle";
 import BattleScene from "../battle-scene";
 import { Gender } from "../data/gender";
-import { Nature } from "../data/nature";
-import { PokeballType } from "../data/pokeball";
+import { Nature } from "#enums/nature";
+import { PokeballType } from "#enums/pokeball";
 import { getPokemonSpecies } from "../data/pokemon-species";
 import { Status } from "../data/status-effect";
 import Pokemon, { EnemyPokemon, PokemonMove, PokemonSummonData } from "../field/pokemon";
@@ -118,8 +118,8 @@ export default class PokemonData {
 
     // Deprecated, but needed for session data migration
     this.natureOverride = source.natureOverride;
-    this.mysteryEncounterPokemonData = new CustomPokemonData(source.mysteryEncounterPokemonData);
-    this.fusionMysteryEncounterPokemonData = new CustomPokemonData(source.fusionMysteryEncounterPokemonData);
+    this.mysteryEncounterPokemonData = source.mysteryEncounterPokemonData ? new CustomPokemonData(source.mysteryEncounterPokemonData) : null;
+    this.fusionMysteryEncounterPokemonData = source.fusionMysteryEncounterPokemonData ? new CustomPokemonData(source.fusionMysteryEncounterPokemonData) : null;
 
     if (!forHistory) {
       this.boss = (source instanceof EnemyPokemon && !!source.bossSegments) || (!this.player && !!source.boss);
@@ -135,7 +135,7 @@ export default class PokemonData {
         }
       }
     } else {
-      this.moveset = (source.moveset || [ new PokemonMove(Moves.TACKLE), new PokemonMove(Moves.GROWL) ]).filter(m => m).map((m: any) => new PokemonMove(m.moveId, m.ppUsed, m.ppUp));
+      this.moveset = (source.moveset || [ new PokemonMove(Moves.TACKLE), new PokemonMove(Moves.GROWL) ]).filter(m => m).map((m: any) => new PokemonMove(m.moveId, m.ppUsed, m.ppUp, m.virtual, m.maxPpOverride));
       if (!forHistory) {
         this.status = source.status
           ? new Status(source.status.effect, source.status.toxicTurnCount, source.status.sleepTurnsRemaining)
@@ -171,7 +171,7 @@ export default class PokemonData {
           playerPokemon.nickname = this.nickname;
         }
       })
-      : scene.addEnemyPokemon(species, this.level, battleType === BattleType.TRAINER ? !double || !(partyMemberIndex % 2) ? TrainerSlot.TRAINER : TrainerSlot.TRAINER_PARTNER : TrainerSlot.NONE, this.boss, this);
+      : scene.addEnemyPokemon(species, this.level, battleType === BattleType.TRAINER ? !double || !(partyMemberIndex % 2) ? TrainerSlot.TRAINER : TrainerSlot.TRAINER_PARTNER : TrainerSlot.NONE, this.boss, false, this);
     if (this.summonData) {
       ret.primeSummonData(this.summonData);
     }

@@ -13,7 +13,7 @@ import {
   ModifierTypeOption, modifierTypes,
   regenerateModifierPoolThresholds,
 } from "#app/modifier/modifier-type";
-import { randSeedInt } from "#app/utils";
+import { randSeedInt, randSeedItem } from "#app/utils";
 import { BattlerTagType } from "#enums/battler-tag-type";
 import { MysteryEncounterType } from "#enums/mystery-encounter-type";
 import BattleScene from "#app/battle-scene";
@@ -31,6 +31,7 @@ import { BerryType } from "#enums/berry-type";
 import { PERMANENT_STATS, Stat } from "#enums/stat";
 import { StatStageChangePhase } from "#app/phases/stat-stage-change-phase";
 import { CLASSIC_MODE_MYSTERY_ENCOUNTER_WAVES } from "#app/game-mode";
+import PokemonSpecies, { getPokemonSpecies } from "#app/data/pokemon-species";
 
 /** the i18n namespace for the encounter */
 const namespace = "mysteryEncounters/berriesAbound";
@@ -58,7 +59,14 @@ export const BerriesAboundEncounter: MysteryEncounter =
 
       // Calculate boss mon
       const level = getEncounterPokemonLevelForWave(scene, STANDARD_ENCOUNTER_BOOSTED_LEVEL_MODIFIER);
-      const bossSpecies = scene.arena.randomSpecies(scene.currentBattle.waveIndex, level, 0, getPartyLuckValue(scene.getParty()), true);
+      let bossSpecies: PokemonSpecies;
+      if (scene.eventManager.isEventActive() && scene.eventManager.activeEvent()?.uncommonBreedEncounters && randSeedInt(2) === 1) {
+        const eventEncounter = randSeedItem(scene.eventManager.activeEvent()!.uncommonBreedEncounters!);
+        const levelSpecies = getPokemonSpecies(eventEncounter.species).getWildSpeciesForLevel(level, eventEncounter.allowEvolution ?? false, true, scene.gameMode);
+        bossSpecies = getPokemonSpecies( levelSpecies );
+      } else {
+        bossSpecies = scene.arena.randomSpecies(scene.currentBattle.waveIndex, level, 0, getPartyLuckValue(scene.getPlayerParty()), true);
+      }
       const bossPokemon = new EnemyPokemon(scene, bossSpecies, level, TrainerSlot.NONE, true);
       encounter.setDialogueToken("enemyPokemon", getPokemonNameWithAffix(bossPokemon));
       const config: EnemyPartyConfig = {
@@ -77,7 +85,7 @@ export const BerriesAboundEncounter: MysteryEncounter =
         scene.currentBattle.waveIndex > 160 ? 7
           : scene.currentBattle.waveIndex > 120 ? 5
             : scene.currentBattle.waveIndex > 40 ? 4 : 2;
-      regenerateModifierPoolThresholds(scene.getParty(), ModifierPoolType.PLAYER, 0);
+      regenerateModifierPoolThresholds(scene.getPlayerParty(), ModifierPoolType.PLAYER, 0);
       encounter.misc = { numBerries };
 
       const { spriteKey, fileRoot } = getSpriteKeysFromPokemon(bossPokemon);
@@ -98,7 +106,9 @@ export const BerriesAboundEncounter: MysteryEncounter =
           tint: 0.25,
           x: -5,
           repeat: true,
-          isPokemon: true
+          isPokemon: true,
+          isShiny: bossPokemon.shiny,
+          variant: bossPokemon.variant
         }
       ];
 
@@ -253,7 +263,7 @@ function tryGiveBerry(scene: BattleScene, prioritizedPokemon?: PlayerPokemon) {
   const berryType = randSeedInt(Object.keys(BerryType).filter(s => !isNaN(Number(s))).length) as BerryType;
   const berry = generateModifierType(scene, modifierTypes.BERRY, [ berryType ]) as BerryModifierType;
 
-  const party = scene.getParty();
+  const party = scene.getPlayerParty();
 
   // Will try to apply to prioritized pokemon first, then do normal application method if it fails
   if (prioritizedPokemon) {

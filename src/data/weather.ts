@@ -2,7 +2,7 @@ import { Biome } from "#enums/biome";
 import { WeatherType } from "#enums/weather-type";
 import { getPokemonNameWithAffix } from "../messages";
 import Pokemon from "../field/pokemon";
-import { Type } from "./type";
+import { Type } from "#enums/type";
 import Move, { AttackMove } from "./move";
 import * as Utils from "../utils";
 import BattleScene from "../battle-scene";
@@ -10,7 +10,6 @@ import { SuppressWeatherEffectAbAttr } from "./ability";
 import { TerrainType, getTerrainName } from "./terrain";
 import i18next from "i18next";
 
-export { WeatherType };
 export class Weather {
   public weatherType: WeatherType;
   public turnsLeft: integer;
@@ -243,7 +242,7 @@ export function getTerrainBlockMessage(pokemon: Pokemon, terrainType: TerrainTyp
   return i18next.t("terrain:defaultBlockMessage", { pokemonNameWithAffix: getPokemonNameWithAffix(pokemon), terrainName: getTerrainName(terrainType) });
 }
 
-interface WeatherPoolEntry {
+export interface WeatherPoolEntry {
   weatherType: WeatherType;
   weight: integer;
 }
@@ -372,6 +371,10 @@ export function getRandomWeatherType(arena: any /* Importing from arena causes a
         weatherPool.push({ weatherType: WeatherType.SUNNY, weight: 2 });
       }
       break;
+  }
+
+  if (arena.biomeType === Biome.TOWN && arena.scene.eventManager.isEventActive() && arena.scene.eventManager.activeEvent()?.weather?.length > 0) {
+    arena.scene.eventManager.activeEvent().weather.map(w => weatherPool.push(w));
   }
 
   if (weatherPool.length > 1) {

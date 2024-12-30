@@ -1,4 +1,6 @@
-import { Egg, getLegendaryGachaSpeciesForTimestamp } from "#app/data/egg";
+import { speciesEggTiers } from "#app/data/balance/species-egg-tiers";
+import { Egg, getLegendaryGachaSpeciesForTimestamp, getValidLegendaryGachaSpecies } from "#app/data/egg";
+import { allSpecies } from "#app/data/pokemon-species";
 import { EggSourceType } from "#app/enums/egg-source-types";
 import { EggTier } from "#app/enums/egg-type";
 import { VariantTier } from "#app/enums/variant-tier";
@@ -30,28 +32,28 @@ describe("Egg Generation Tests", () => {
     await game.importData("src/test/utils/saves/everything.prsv");
   });
 
-  it("should return Arceus for the 10th of June", () => {
+  it("should return Kyogre for the 10th of June", () => {
     const scene = game.scene;
     const timestamp = new Date(2024, 5, 10, 15, 0, 0, 0).getTime();
-    const expectedSpecies = Species.ARCEUS;
+    const expectedSpecies = Species.KYOGRE;
 
     const result = getLegendaryGachaSpeciesForTimestamp(scene, timestamp);
 
     expect(result).toBe(expectedSpecies);
   });
-  it("should return Arceus for the 10th of July", () => {
+  it("should return Kyogre for the 10th of July", () => {
     const scene = game.scene;
     const timestamp = new Date(2024, 6, 10, 15, 0, 0, 0).getTime();
-    const expectedSpecies = Species.ARCEUS;
+    const expectedSpecies = Species.KYOGRE;
 
     const result = getLegendaryGachaSpeciesForTimestamp(scene, timestamp);
 
     expect(result).toBe(expectedSpecies);
   });
-  it("should hatch an Arceus around half the time. Set from legendary gacha", async () => {
+  it("should hatch a Kyogre around half the time. Set from legendary gacha", async () => {
     const scene = game.scene;
     const timestamp = new Date(2024, 6, 10, 15, 0, 0, 0).getTime();
-    const expectedSpecies = Species.ARCEUS;
+    const expectedSpecies = Species.KYOGRE;
     let gachaSpeciesCount = 0;
 
     for (let i = 0; i < EGG_HATCH_COUNT; i++) {
@@ -63,6 +65,12 @@ describe("Egg Generation Tests", () => {
 
     expect(gachaSpeciesCount).toBeGreaterThan(0.4 * EGG_HATCH_COUNT);
     expect(gachaSpeciesCount).toBeLessThan(0.6 * EGG_HATCH_COUNT);
+  });
+  it("should never be allowed to generate Eternatus via the legendary gacha", () => {
+    const validLegendaryGachaSpecies = getValidLegendaryGachaSpecies();
+    expect(validLegendaryGachaSpecies.every(s => speciesEggTiers[s] === EggTier.LEGENDARY)).toBe(true);
+    expect(validLegendaryGachaSpecies.every(s => allSpecies[s].isObtainable())).toBe(true);
+    expect(validLegendaryGachaSpecies.includes(Species.ETERNATUS)).toBe(false);
   });
   it("should hatch an Arceus. Set from species", () => {
     const scene = game.scene;
