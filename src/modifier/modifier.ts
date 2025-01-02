@@ -136,11 +136,35 @@ export class ModifierBar extends Phaser.GameObjects.Container {
 }
 
 //#region REWORK
+
+export enum ModifierConfigFlag {
+  PERSISTENT = 0x1,
+  PLAYER_CONSUMABLE = 0x2,
+  LAPSING = 0x4,
+  HELD = 0x8,
+  EFFECT_TEAM = 0x10,
+  EFFECT_OPPOSING_TEAM = 0x20,
+  EFFECT_FIELD = 0x40,
+  CAN_TRANSFER = 0x80,
+  CAN_STEAL = 0x100,
+  CAN_DISABLE = 0x200,
+  CAN_POKE_CONSUME = 0x400,
+  CAN_FLING = 0x800,
+  SHEER_FORCE_IGNORE = 0x1000,
+  HARVEST_RENEWABLE = 0x2000
+}
 export enum ModifierClass {
   PERSISTENT,
   CONSUMABLE,
   LAPSING_PERSISTENT,
   HELD_ITEM,
+  LAPSING_HELD_ITEM,
+}
+export enum ItemEffects {
+  MODIFY_MONEY_EARNED,
+  MODIFY_SHOP_PRICE,
+  MODIFY_DAMAGE_DEALT,
+  MODIFY_DAMAGE_TAKEN,
 }
 
 export enum PersistentModifierType {
@@ -153,18 +177,24 @@ export enum PersistentModifierType {
 
 export abstract class ModifierConfig {
   public type;
-  public consumable: boolean;
-  public persistent: boolean;
+  public flags: number;
+  constructor (type) {
+    this.type = type;
+  }
 }
 
 export abstract class PersistentModifierConfig extends ModifierConfig {
-  public lapsing: boolean;
   public maxStackCount: number;
-  constructor(type, lapsing:boolean,maxStackCount:number) {
+  /** The maximum amount of battles the modifier will exist for, if lapsing */
+  public maxBattles: number;
+  constructor(type, lapsing:boolean, maxStackCount:number, maxBattles?: number) {
+    super(type);
     this.type = type;
-    this.consumable = false;
-    this.persistent = true;
-    this.lapsing = lapsing;
+    this.flags |= ModifierConfigFlag.PERSISTENT ;
+    if (lapsing) {
+      this.flags |= ModifierConfigFlag.LAPSING ;
+      this.maxBattles = maxBattles ?? 0;
+    }
     this.maxStackCount = maxStackCount;
   }
 }
@@ -174,53 +204,65 @@ export abstract class ConsumableModifierConfig extends ModifierConfig {
   public param: number; //Generic number parameter
 }
 
-export abstract class LapsingPersistentModifierConfig extends PersistentModifierConfig {
-  /** The maximum amount of battles the modifier will exist for */
-  private maxBattles: number;
-}
-
-export abstract class PokemonHeldItemModifierConfig extends PersistentModifierConfig {
-  lapsing: false;
-  consumable: false;
-  persistent: true;
-
-  public isTransferable: boolean = true;
-  public isStealable: boolean = true;
-  public canDisable: boolean = true;
+export class PokemonHeldItemModifierConfig extends PersistentModifierConfig {
   public weight: number = 0;
   public species?: Species[] = []; /* For species-exclusive items */
 
-
-  constructor(type, isTransferable: boolean, isStealable: boolean, canDisable: boolean, maxStackCount: number = 1, weight: number = 0, chance: number = 0, ) {
-    super(type, false, maxStackCount);
-    this.isTransferable = isTransferable;
+  constructor(type, flags: number, maxStackCount: number = 1, chance: number = 0, lapsing: boolean = false, weight: number = 0, ) {
+    super(type, lapsing, maxStackCount);
+    this.flags |= ModifierConfigFlag.HELD;
   }
-}
 
-export abstract class LapsingPokemonHeldItemModifierConfig extends LapsingPersistentModifierConfig {
-  public isTransferable: boolean = true;
-  public isStealable: boolean = true;
+  applyModifier(user: Pokemon, target: Pokemon, args: any ): boolean {
+    return false;
+  }
+
+  setSpecies(...species: Species[]): PokemonHeldItemModifierConfig {
+    this.species = species;
+    return this;
+  }
+
+  canDisable(): boolean {
+    return (this.flags & ModifierConfigFlag.CAN_DISABLE) === 1;
+  }
+
+  canSteal(): boolean {
+    return (this.flags & ModifierConfigFlag.CAN_STEAL) === 1;
+  }
+
+  canTransfer(): boolean {
+    return (this.flags & ModifierConfigFlag.CAN_TRANSFER) === 1;
+  }
 }
 
 export class BerryModifierConfig extends PokemonHeldItemModifierConfig {
   public berryType: BerryType;
 }
 
-export class ChanceHeldItemConfig extends PokemonHeldItemModifierConfig {
-  public chance: number;
+export enum PersistentItemDataFlag {
+  PLAYER = 0x1
 }
 
 export class PersistentItemData {
-  public type: ModifierType;//modifiertype is an enum btw
+  public type: Modifiers;
   public stackCount: number;
+  public state: number;
+  public flags: number;
+}
+
+export enum HeldItemDataFlag {
+  DISABLED = 0x1,
+  CONSUMED = 0x2,
+  FLUNG = 0x4,
+  ACTIVATED = 0x8,
+  STOLEN = 0x10,
+  BESTOWED = 0x20
 }
 
 export class PokemonHeldItemData extends PersistentItemData {
   public pokemonId: number;
-  public modifierId: number;
-  public state: number;
+  public heldFlags: number;
   public cooldown: number;
-  public disabled: boolean;
 }
 
 interface ModifierConfigEntry {
@@ -228,7 +270,7 @@ interface ModifierConfigEntry {
 }
 
 export const heldItemConfigs: ModifierConfigEntry = {
-  [Modifiers.FOCUS_BAND]: new PokemonHeldItemModifierConfig(Modifiers.FOCUS_BAND, )
+  [Modifiers.FOCUS_BAND]: new PokemonHeldItemModifierConfig(Modifiers.FOCUS_BAND, (ModifierConfigFlag.CAN_DISABLE | ModifierConfigFlag.CAN_STEAL | ModifierConfigFlag.CAN_TRANSFER), 3, 10 )
 };
 
 //#endregion REWORK
