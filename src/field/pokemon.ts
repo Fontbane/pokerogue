@@ -5287,7 +5287,7 @@ export class PokemonSummonData {
   public addedType: Type | null = null;
 
   isDefault(): boolean {
-    return this === new PokemonSummonData();
+    return this.statStages.every(s=>s === 0) && this.stats.every(s=>s === 0) && isNullOrUndefined(this.moveQueue) && isNullOrUndefined(this.tags) && isNullOrUndefined(this.moveset);
   }
 }
 

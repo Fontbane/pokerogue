@@ -27,7 +27,7 @@ export class CustomPokemonData {
   }
 
   isDefault(): boolean {
-    return this === new CustomPokemonData();
-    //return this.spriteScale === -1 && this.ability === -1 && this.passive === -1 && this.nature === -1 && this.types.length === 0;
+    //return this === new CustomPokemonData();
+    return this.spriteScale === -1 && this.ability === -1 && this.passive === -1 && this.nature === -1 && this.types.length === 0;
   }
 }
