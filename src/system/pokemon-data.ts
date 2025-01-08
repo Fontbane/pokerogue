@@ -13,6 +13,18 @@ import { Biome } from "#enums/biome";
 import { Moves } from "#enums/moves";
 import { Species } from "#enums/species";
 import { CustomPokemonData } from "#app/data/custom-pokemon-data";
+import { isNullOrUndefined } from "#app/utils";
+
+export interface FusionData {
+  species: Species;
+  formIndex: number;
+  abilityIndex: number;
+  shiny: boolean;
+  variant: Variant;
+  gender: Gender;
+  luck: number;
+  customPokemonData: CustomPokemonData | null;
+}
 
 export default class PokemonData {
   public id: integer;
@@ -46,6 +58,8 @@ export default class PokemonData {
   public usedTMs: Moves[];
   public evoCounter: integer;
 
+  public fusionData: FusionData | null;
+
   public fusionSpecies: Species;
   public fusionFormIndex: integer;
   public fusionAbilityIndex: integer;
@@ -57,11 +71,11 @@ export default class PokemonData {
   public boss: boolean;
   public bossSegments?: integer;
 
-  public summonData: PokemonSummonData;
+  public summonData: PokemonSummonData | null;
 
   /** Data that can customize a Pokemon in non-standard ways from its Species */
-  public customPokemonData: CustomPokemonData;
-  public fusionCustomPokemonData: CustomPokemonData;
+  public customPokemonData: CustomPokemonData | null;
+  public fusionCustomPokemonData: CustomPokemonData | null;
 
   // Deprecated attributes, needed for now to allow SessionData migration (see PR#4619 comments)
   public natureOverride: Nature | -1;
@@ -104,6 +118,34 @@ export default class PokemonData {
     }
     this.pokerus = !!source.pokerus;
 
+    if (sourcePokemon?.isFusion()) {
+      this.fusionData = {
+        species: source.fusionSpecies.speciesId,
+        formIndex: source.fusionFormIndex,
+        abilityIndex: source.fusionAbilityIndex,
+        shiny: source.fusionShiny,
+        variant: source.fusionVariant,
+        gender: source.fusionGender,
+        luck: source.fusionLuck,
+        customPokemonData: isNullOrUndefined(source.fusionCustomPokemonData) || source.fusionCustomPokemonData?.isDefault() ? null : source.fusionCustomPokemonData
+      };
+    } else if (!isNullOrUndefined(source.fusionData)) {
+      this.fusionData = source.fusionData;
+    }
+
+    this.usedTMs = source.usedTMs ?? [];
+
+    if (!isNullOrUndefined(source.customPokemonData)) {
+      this.customPokemonData = new CustomPokemonData(source.customPokemonData);
+      if (this.customPokemonData.isDefault()) {
+        this.customPokemonData = null;
+      }
+    }
+
+    // Deprecated, but needed for session data migration
+    this.natureOverride = source.natureOverride;
+    this.mysteryEncounterPokemonData = source.mysteryEncounterPokemonData ? new CustomPokemonData(source.mysteryEncounterPokemonData) : null;
+    this.fusionMysteryEncounterPokemonData = source.fusionMysteryEncounterPokemonData ? new CustomPokemonData(source.fusionMysteryEncounterPokemonData) : null;
     this.fusionSpecies = sourcePokemon ? sourcePokemon.fusionSpecies?.speciesId : source.fusionSpecies;
     this.fusionFormIndex = source.fusionFormIndex;
     this.fusionAbilityIndex = source.fusionAbilityIndex;
@@ -112,14 +154,6 @@ export default class PokemonData {
     this.fusionGender = source.fusionGender;
     this.fusionLuck = source.fusionLuck !== undefined ? source.fusionLuck : (source.fusionShiny ? source.fusionVariant + 1 : 0);
     this.fusionCustomPokemonData = new CustomPokemonData(source.fusionCustomPokemonData);
-    this.usedTMs = source.usedTMs ?? [];
-
-    this.customPokemonData = new CustomPokemonData(source.customPokemonData);
-
-    // Deprecated, but needed for session data migration
-    this.natureOverride = source.natureOverride;
-    this.mysteryEncounterPokemonData = source.mysteryEncounterPokemonData ? new CustomPokemonData(source.mysteryEncounterPokemonData) : null;
-    this.fusionMysteryEncounterPokemonData = source.fusionMysteryEncounterPokemonData ? new CustomPokemonData(source.fusionMysteryEncounterPokemonData) : null;
 
     if (!forHistory) {
       this.boss = (source instanceof EnemyPokemon && !!source.bossSegments) || (!this.player && !!source.boss);
@@ -130,7 +164,7 @@ export default class PokemonData {
       this.moveset = sourcePokemon.moveset;
       if (!forHistory) {
         this.status = sourcePokemon.status;
-        if (this.player) {
+        if (this.player && sourcePokemon.summonData?.isDefault()) {
           this.summonData = sourcePokemon.summonData;
         }
       }
@@ -140,24 +174,26 @@ export default class PokemonData {
         this.status = source.status
           ? new Status(source.status.effect, source.status.toxicTurnCount, source.status.sleepTurnsRemaining)
           : null;
-      }
+        if (!isNullOrUndefined(source.summonData)) {
+          this.summonData = new PokemonSummonData();
+          this.summonData.stats = source.summonData.stats;
+          this.summonData.statStages = source.summonData.statStages;
+          this.summonData.moveQueue = source.summonData.moveQueue;
+          this.summonData.abilitySuppressed = source.summonData.abilitySuppressed;
+          this.summonData.abilitiesApplied = source.summonData.abilitiesApplied;
 
-      this.summonData = new PokemonSummonData();
-      if (!forHistory && source.summonData) {
-        this.summonData.stats = source.summonData.stats;
-        this.summonData.statStages = source.summonData.statStages;
-        this.summonData.moveQueue = source.summonData.moveQueue;
-        this.summonData.abilitySuppressed = source.summonData.abilitySuppressed;
-        this.summonData.abilitiesApplied = source.summonData.abilitiesApplied;
+          this.summonData.ability = source.summonData.ability;
+          this.summonData.moveset = source.summonData.moveset?.map(m => PokemonMove.loadMove(m));
+          this.summonData.types = source.summonData.types;
 
-        this.summonData.ability = source.summonData.ability;
-        this.summonData.moveset = source.summonData.moveset?.map(m => PokemonMove.loadMove(m));
-        this.summonData.types = source.summonData.types;
-
-        if (source.summonData.tags) {
-          this.summonData.tags = source.summonData.tags?.map(t => loadBattlerTag(t));
-        } else {
-          this.summonData.tags = [];
+          if (source.summonData.tags) {
+            this.summonData.tags = source.summonData.tags?.map(t => loadBattlerTag(t));
+          } else {
+            this.summonData.tags = [];
+          }
+          if (this.summonData.isDefault()) {
+            this.summonData = null;
+          }
         }
       }
     }
