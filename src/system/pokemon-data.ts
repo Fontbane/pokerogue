@@ -118,16 +118,16 @@ export default class PokemonData {
     }
     this.pokerus = !!source.pokerus;
 
-    if (sourcePokemon?.isFusion()) {
+    if (!isNullOrUndefined(source.fusionSpecies) && source.fusionSpecies.speciesId !== 0) {
       this.fusionData = {
-        species: source.fusionSpecies.speciesId,
+        species: sourcePokemon?.fusionSpecies?.speciesId ?? source.fusionSpecies,
         formIndex: source.fusionFormIndex,
         abilityIndex: source.fusionAbilityIndex,
         shiny: source.fusionShiny,
         variant: source.fusionVariant,
         gender: source.fusionGender,
         luck: source.fusionLuck,
-        customPokemonData: isNullOrUndefined(source.fusionCustomPokemonData) || source.fusionCustomPokemonData?.isDefault() ? null : source.fusionCustomPokemonData
+        customPokemonData: isNullOrUndefined(source.fusionCustomPokemonData) || (new CustomPokemonData(source.fusionCustomPokemonData)).isDefault() ? null : source.fusionCustomPokemonData
       };
     } else if (!isNullOrUndefined(source.fusionData)) {
       this.fusionData = source.fusionData;
