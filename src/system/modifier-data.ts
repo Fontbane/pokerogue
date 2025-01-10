@@ -8,6 +8,7 @@ export default class ModifierData {
   public typePregenArgs: any[];
   public args: any[];
   public stackCount: integer;
+  public state: integer;
 
   public className: string;
 

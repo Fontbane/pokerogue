@@ -138,20 +138,21 @@ export class ModifierBar extends Phaser.GameObjects.Container {
 //#region REWORK
 
 export enum ModifierConfigFlag {
-  PERSISTENT = 0x1,
-  PLAYER_CONSUMABLE = 0x2,
-  LAPSING = 0x4,
-  HELD = 0x8,
-  EFFECT_TEAM = 0x10,
-  EFFECT_OPPOSING_TEAM = 0x20,
-  EFFECT_FIELD = 0x40,
-  CAN_TRANSFER = 0x80,
-  CAN_STEAL = 0x100,
-  CAN_DISABLE = 0x200,
-  CAN_POKE_CONSUME = 0x400,
-  CAN_FLING = 0x800,
-  SHEER_FORCE_IGNORE = 0x1000,
-  HARVEST_RENEWABLE = 0x2000
+  PERSISTENT = 1 << 1,
+  PLAYER_CONSUMABLE = 1 << 2,
+  LAPSING = 1 << 3,
+  HELD = 1 << 4,
+  EFFECT_TEAM = 1 << 5,
+  EFFECT_OPPOSING_TEAM = 1 << 6,
+  EFFECT_FIELD = 1 << 7,
+  CAN_TRANSFER = 1 << 8,
+  CAN_STEAL = 1 << 9,
+  CAN_DISABLE = 1 << 10,
+  CAN_POKE_CONSUME = 1 << 11,
+  CAN_FLING = 1 << 12,
+  SHEER_FORCE_IGNORE = 1 << 13,
+  HARVEST_RENEWABLE = 1 << 14,
+  HAS_COOLDOWN = 1 << 15
 }
 export enum ModifierClass {
   PERSISTENT,
@@ -159,12 +160,30 @@ export enum ModifierClass {
   LAPSING_PERSISTENT,
   HELD_ITEM,
   LAPSING_HELD_ITEM,
+  ATTACK_TYPE_BOOSTER,
+  TM_COMMON,
+  TM_GREAT,
+  TM_ULTRA,
+  TM,
+  MEMORY_MUSHROOM,
+  RKS_MEMORY,
+  DRIVE,
+  PLATE,
+  FORM_CHANGE_ITEM,
+  EVOLUTION_ITEM
+}
+export enum ModifierCategory {
+  ATTACK_TYPE_BOOSTER,
+  TM,
+  FORM_CHANGE_ITEM,
+  EVOLUTION_ITEM
 }
 export enum ItemEffects {
   MODIFY_MONEY_EARNED,
   MODIFY_SHOP_PRICE,
   MODIFY_DAMAGE_DEALT,
   MODIFY_DAMAGE_TAKEN,
+  CRIT_BOOST,
 }
 
 export enum PersistentModifierType {
@@ -177,24 +196,23 @@ export enum PersistentModifierType {
 
 export abstract class ModifierConfig {
   public type;
-  public flags: number;
-  constructor (type) {
+  public flags: ModifierConfigFlag;
+  public cfgArgs: any[];
+  constructor (type, flags: ModifierConfigFlag, ...args: any[]) {
     this.type = type;
+    this.flags = flags;
+    this.cfgArgs = args;
   }
 }
 
 export abstract class PersistentModifierConfig extends ModifierConfig {
   public maxStackCount: number;
-  /** The maximum amount of battles the modifier will exist for, if lapsing */
+  /** The maximum amount of battles the modifier will exist for, if lapsing, or default cooldown */
   public maxBattles: number;
-  constructor(type, lapsing:boolean, maxStackCount:number, maxBattles?: number) {
-    super(type);
-    this.type = type;
-    this.flags |= ModifierConfigFlag.PERSISTENT ;
-    if (lapsing) {
-      this.flags |= ModifierConfigFlag.LAPSING ;
-      this.maxBattles = maxBattles ?? 0;
-    }
+  public chance: number;
+  constructor(type, flags: ModifierConfigFlag, maxStackCount:number = 1, ...args: any[]) {
+    super(type, flags, args);
+    this.flags |= ModifierConfigFlag.PERSISTENT;
     this.maxStackCount = maxStackCount;
   }
 }
@@ -208,8 +226,8 @@ export class PokemonHeldItemModifierConfig extends PersistentModifierConfig {
   public weight: number = 0;
   public species?: Species[] = []; /* For species-exclusive items */
 
-  constructor(type, flags: number, maxStackCount: number = 1, chance: number = 0, lapsing: boolean = false, weight: number = 0, ) {
-    super(type, lapsing, maxStackCount);
+  constructor(type, flags: number, maxStackCount: number = 1, ...args: any[] ) {
+    super(type, flags, maxStackCount, args);
     this.flags |= ModifierConfigFlag.HELD;
   }
 
@@ -270,7 +288,10 @@ interface ModifierConfigEntry {
 }
 
 export const heldItemConfigs: ModifierConfigEntry = {
-  [Modifiers.FOCUS_BAND]: new PokemonHeldItemModifierConfig(Modifiers.FOCUS_BAND, (ModifierConfigFlag.CAN_DISABLE | ModifierConfigFlag.CAN_STEAL | ModifierConfigFlag.CAN_TRANSFER), 3, 10 )
+  [Modifiers.FOCUS_BAND]: new PokemonHeldItemModifierConfig(Modifiers.FOCUS_BAND, (ModifierConfigFlag.CAN_DISABLE | ModifierConfigFlag.CAN_STEAL | ModifierConfigFlag.CAN_TRANSFER), 3, 10 ),
+  [Modifiers.LEEK]: new PokemonHeldItemModifierConfig(Modifiers.LEEK, (ModifierConfigFlag.CAN_DISABLE | ModifierConfigFlag.CAN_STEAL | ModifierConfigFlag.CAN_TRANSFER), 1, 1)
+    .setSpecies(Species.FARFETCHD, Species.GALAR_FARFETCHD, Species.SIRFETCHD),
+  [Modifiers.SILK_SCARF]: new PokemonHeldItemModifierConfig(Modifiers.SILK_SCARF, (ModifierConfigFlag.CAN_DISABLE | ModifierConfigFlag.CAN_STEAL | ModifierConfigFlag.CAN_TRANSFER), 99, Type.NORMAL)
 };
 
 //#endregion REWORK
@@ -305,11 +326,14 @@ export abstract class Modifier {
 export abstract class PersistentModifier extends Modifier {
   public stackCount: number;
   public virtualStackCount: number;
+  public state: number;
+  public config: ModifierConfig;
 
-  constructor(type: ModifierType, stackCount?: number) {
+  constructor(type: ModifierType, stackCount?: number, state?: number, flags?: ModifierConfigFlag) {
     super(type);
-    this.stackCount = stackCount === undefined ? 1 : stackCount;
+    this.stackCount = stackCount ?? 1;
     this.virtualStackCount = 0;
+    this.state = state ?? 0;
   }
 
   add(modifiers: PersistentModifier[], virtual: boolean, scene: BattleScene): boolean {
@@ -788,8 +812,8 @@ export abstract class PokemonHeldItemModifier extends PersistentModifier {
   public pokemonId: number;
   public isTransferable: boolean = true;
 
-  constructor(type: ModifierType, pokemonId: number, stackCount?: number) {
-    super(type, stackCount);
+  constructor(type: ModifierType, pokemonId: number, stackCount?: number, flags?: ModifierConfigFlag) {
+    super(type, stackCount, flags);
 
     this.pokemonId = pokemonId;
   }
