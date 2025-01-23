@@ -223,11 +223,13 @@ export abstract class ConsumableModifierConfig extends ModifierConfig {
 }
 
 export class PokemonHeldItemModifierConfig extends PersistentModifierConfig {
-  public weight: number = 0;
+  public weight: number = 0; //For stealing purposes
+  public value: number = 0; //generic parameter, for multipliers etc
   public species?: Species[] = []; /* For species-exclusive items */
 
-  constructor(type, flags: number, maxStackCount: number = 1, ...args: any[] ) {
+  constructor(type, flags: ModifierConfigFlag, maxStackCount: number = 1, value: number = 0, ...args: any[] ) {
     super(type, flags, maxStackCount, args);
+    this.value = value;
     this.flags |= ModifierConfigFlag.HELD;
   }
 
@@ -240,16 +242,34 @@ export class PokemonHeldItemModifierConfig extends PersistentModifierConfig {
     return this;
   }
 
-  canDisable(): boolean {
-    return (this.flags & ModifierConfigFlag.CAN_DISABLE) === 1;
+  public get canDisable(): boolean {
+    return !!(this.flags & ModifierConfigFlag.CAN_DISABLE);
   }
 
-  canSteal(): boolean {
-    return (this.flags & ModifierConfigFlag.CAN_STEAL) === 1;
+  public get canSteal(): boolean {
+    return !!(this.flags & ModifierConfigFlag.CAN_STEAL);
   }
 
-  canTransfer(): boolean {
-    return (this.flags & ModifierConfigFlag.CAN_TRANSFER) === 1;
+  public get canTransfer(): boolean {
+    return !!(this.flags & ModifierConfigFlag.CAN_TRANSFER);
+  }
+}
+
+export class PokemonStatBoosterHeldItemCfg extends PokemonHeldItemModifierConfig {
+  public stats: Stat[];
+  constructor(type, boost: number = 0, maxStackCount: number = 1, ...args: any[] ) {
+    super (type, (ModifierConfigFlag.CAN_DISABLE | ModifierConfigFlag.CAN_STEAL | ModifierConfigFlag.CAN_TRANSFER), boost, maxStackCount, args);
+    if (!isNullOrUndefined(args) && args.length > 0) {
+      this.stats.push(...args.filter(a => a > Stat.HP && a <= Stat.EVA));
+    }
+  }
+}
+
+export class PokemonAttackTypeBoosterCfg extends PokemonHeldItemModifierConfig {
+  protected moveType: Type;
+  constructor(type, moveType: Type, boost: number = 0, maxStackCount: number = 1, ...args: any[] ) {
+    super(type, (ModifierConfigFlag.CAN_DISABLE | ModifierConfigFlag.CAN_STEAL | ModifierConfigFlag.CAN_TRANSFER), maxStackCount, boost, args);
+    this.moveType = moveType;
   }
 }
 
@@ -274,13 +294,42 @@ export enum HeldItemDataFlag {
   FLUNG = 0x4,
   ACTIVATED = 0x8,
   STOLEN = 0x10,
-  BESTOWED = 0x20
+  BESTOWED = 0x20,
+  SWAPPED = 0x40
 }
 
 export class PokemonHeldItemData extends PersistentItemData {
   public pokemonId: number;
-  public heldFlags: number;
+  public heldFlags: HeldItemDataFlag;
   public cooldown: number;
+
+  public get disabled(): boolean {
+    return !!(this.heldFlags & HeldItemDataFlag.DISABLED);
+  }
+
+  public get consumed(): boolean {
+    return !!(this.heldFlags & HeldItemDataFlag.CONSUMED);
+  }
+
+  public get flung(): boolean {
+    return !!(this.heldFlags & HeldItemDataFlag.FLUNG);
+  }
+
+  public get activated(): boolean {
+    return !!(this.heldFlags & HeldItemDataFlag.ACTIVATED);
+  }
+
+  public get stolen(): boolean {
+    return !!(this.heldFlags & HeldItemDataFlag.STOLEN);
+  }
+
+  public get bestowed(): boolean {
+    return !!(this.heldFlags & HeldItemDataFlag.BESTOWED);
+  }
+
+  public get swapped(): boolean {
+    return !!(this.heldFlags & HeldItemDataFlag.SWAPPED);
+  }
 }
 
 interface ModifierConfigEntry {
@@ -291,7 +340,15 @@ export const heldItemConfigs: ModifierConfigEntry = {
   [Modifiers.FOCUS_BAND]: new PokemonHeldItemModifierConfig(Modifiers.FOCUS_BAND, (ModifierConfigFlag.CAN_DISABLE | ModifierConfigFlag.CAN_STEAL | ModifierConfigFlag.CAN_TRANSFER), 3, 10 ),
   [Modifiers.LEEK]: new PokemonHeldItemModifierConfig(Modifiers.LEEK, (ModifierConfigFlag.CAN_DISABLE | ModifierConfigFlag.CAN_STEAL | ModifierConfigFlag.CAN_TRANSFER), 1, 1)
     .setSpecies(Species.FARFETCHD, Species.GALAR_FARFETCHD, Species.SIRFETCHD),
-  [Modifiers.SILK_SCARF]: new PokemonHeldItemModifierConfig(Modifiers.SILK_SCARF, (ModifierConfigFlag.CAN_DISABLE | ModifierConfigFlag.CAN_STEAL | ModifierConfigFlag.CAN_TRANSFER), 99, Type.NORMAL)
+  [Modifiers.SILK_SCARF]: new PokemonAttackTypeBoosterCfg(Modifiers.SILK_SCARF, Type.NORMAL, 20, 99),
+  [Modifiers.MAGNET]: new PokemonAttackTypeBoosterCfg(Modifiers.MAGNET, Type.ELECTRIC, 20, 99),
+  [Modifiers.CHARCOAL]: new PokemonAttackTypeBoosterCfg(Modifiers.CHARCOAL, Type.FIRE, 20, 99),
+  [Modifiers.MIRACLE_SEED]: new PokemonAttackTypeBoosterCfg(Modifiers.MIRACLE_SEED, Type.GRASS, 20, 99),
+  [Modifiers.MYSTIC_WATER]: new PokemonAttackTypeBoosterCfg(Modifiers.MYSTIC_WATER, Type.WATER, 20, 99),
+  [Modifiers.METAL_COAT]: new PokemonAttackTypeBoosterCfg(Modifiers.METAL_COAT, Type.STEEL, 20, 99),
+  [Modifiers.NEVER_MELT_ICE]: new PokemonAttackTypeBoosterCfg(Modifiers.NEVER_MELT_ICE, Type.ICE, 20, 99),
+  [Modifiers.LIGHT_BALL]: new PokemonStatBoosterHeldItemCfg(Modifiers.LIGHT_BALL, 1.5, 99, [ Stat.ATK, Stat.SPATK ])
+    .setSpecies(Species.PICHU, Species.PIKACHU)
 };
 
 //#endregion REWORK

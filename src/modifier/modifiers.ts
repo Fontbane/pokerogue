@@ -187,7 +187,8 @@ export enum Modifiers {
     KINGS_ROCK,
 
 // Attack type boosting items
-    SILK_SCARF = 7000,
+    PROTO_ATTACK_TYPE_BOOSTER = 7000,
+    SILK_SCARF,
     BLACK_BELT,
     SHARP_BEAK,
     POISON_BARB,
