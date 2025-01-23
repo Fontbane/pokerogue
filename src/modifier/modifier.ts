@@ -285,7 +285,7 @@ export class PersistentItemData {
   public type: Modifiers;
   public stackCount: number;
   public state: number;
-  public flags: number;
+  public flags: PersistentItemDataFlag;
 }
 
 export enum HeldItemDataFlag {
@@ -295,13 +295,13 @@ export enum HeldItemDataFlag {
   ACTIVATED = 0x8,
   STOLEN = 0x10,
   BESTOWED = 0x20,
-  SWAPPED = 0x40
+  SWAPPED = 0x40,
+  COOLDOWN = 0x80
 }
 
 export class PokemonHeldItemData extends PersistentItemData {
   public pokemonId: number;
   public heldFlags: HeldItemDataFlag;
-  public cooldown: number;
 
   public get disabled(): boolean {
     return !!(this.heldFlags & HeldItemDataFlag.DISABLED);
@@ -329,6 +329,10 @@ export class PokemonHeldItemData extends PersistentItemData {
 
   public get swapped(): boolean {
     return !!(this.heldFlags & HeldItemDataFlag.SWAPPED);
+  }
+
+  public get cooldown(): number {
+    return !!(this.heldFlags & HeldItemDataFlag.COOLDOWN) ? this.state : 0;
   }
 }
 
@@ -385,6 +389,7 @@ export abstract class PersistentModifier extends Modifier {
   public virtualStackCount: number;
   public state: number;
   public config: ModifierConfig;
+  public data: PersistentItemData;
 
   constructor(type: ModifierType, stackCount?: number, state?: number, flags?: ModifierConfigFlag) {
     super(type);
