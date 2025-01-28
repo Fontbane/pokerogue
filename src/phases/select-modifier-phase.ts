@@ -1,7 +1,7 @@
 import { globalScene } from "#app/global-scene";
 import type { ModifierTier } from "#app/modifier/modifier-tier";
 import type { ModifierTypeOption, ModifierType } from "#app/modifier/modifier-type";
-import { regenerateModifierPoolThresholds, getPlayerShopModifierTypeOptionsForWave, PokemonModifierType, FusePokemonModifierType, PokemonMoveModifierType, TmModifierType, RememberMoveModifierType, PokemonPpRestoreModifierType, PokemonPpUpModifierType, ModifierPoolType, getPlayerModifierTypeOptions } from "#app/modifier/modifier-type";
+import { regenerateModifierPoolThresholds, getPlayerShopModifierTypeOptionsForWave, PokemonModifierType, FusePokemonModifierType, PokemonMoveModifierType, TmModifierType, RememberMoveModifierType, PokemonPpRestoreModifierType, PokemonPpUpModifierType, ModifierPoolType, getPlayerModifierTypeOptions, PokemonAllMovePpRestoreModifierType } from "#app/modifier/modifier-type";
 import type { Modifier } from "#app/modifier/modifier";
 import { ExtraModifierModifier, HealShopCostModifier, PokemonHeldItemModifier, TempExtraModifierModifier } from "#app/modifier/modifier";
 import type ModifierSelectUiHandler from "#app/ui/modifier-select-ui-handler";
@@ -216,10 +216,12 @@ export class SelectModifierPhase extends BattlePhase {
           const isTmModifier = modifierType instanceof TmModifierType;
           const isRememberMoveModifier = modifierType instanceof RememberMoveModifierType;
           const isPpRestoreModifier = (modifierType instanceof PokemonPpRestoreModifierType || modifierType instanceof PokemonPpUpModifierType);
-          const partyUiMode = isMoveModifier ? PartyUiMode.MOVE_MODIFIER
-            : isTmModifier ? PartyUiMode.TM_MODIFIER
-              : isRememberMoveModifier ? PartyUiMode.REMEMBER_MOVE_MODIFIER
-                : PartyUiMode.MODIFIER;
+          const shouldShowMoves = modifierType instanceof PokemonAllMovePpRestoreModifierType;
+          const partyUiMode = shouldShowMoves ? PartyUiMode.SHOW_MOVES_MODIFIER
+            : isMoveModifier ? PartyUiMode.MOVE_MODIFIER
+              : isTmModifier ? PartyUiMode.TM_MODIFIER
+                : isRememberMoveModifier ? PartyUiMode.REMEMBER_MOVE_MODIFIER
+                  : PartyUiMode.MODIFIER;
           const tmMoveId = isTmModifier
             ? (modifierType as TmModifierType).moveId
             : undefined;

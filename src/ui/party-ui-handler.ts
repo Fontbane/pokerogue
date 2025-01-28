@@ -97,7 +97,12 @@ export enum PartyUiMode {
    * Indicates that the party UI is open to select a party member for an arbitrary effect.
    * This is generally used in for Mystery Encounter or special effects that require the player to select a Pokemon
    */
-  SELECT
+  SELECT,
+  /**
+   * Indicates that the party UI is open to select a mon to apply
+   * a modifier where moves are relevant (such as Elixir). This type of selection can be cancelled.
+   */
+  SHOW_MOVES_MODIFIER
 }
 
 export enum PartyOption {
@@ -154,6 +159,10 @@ export default class PartyUiHandler extends MessageUiHandler {
   private optionsBg: Phaser.GameObjects.NineSlice;
   private optionsCursorObj: Phaser.GameObjects.Image | null;
   private options: integer[];
+
+  private quickViewContainer: Phaser.GameObjects.Container;
+  private quickViewBg: Phaser.GameObjects.NineSlice;
+  private quickView: integer[];
 
   private transferMode: boolean;
   private transferOptionCursor: integer;
@@ -273,6 +282,9 @@ export default class PartyUiHandler extends MessageUiHandler {
     this.optionsContainer = globalScene.add.container((globalScene.game.canvas.width / 6) - 1, -1);
     partyContainer.add(this.optionsContainer);
 
+    this.quickViewContainer = globalScene.add.container((globalScene.game.canvas.width / 6) - 1, -1);
+    partyContainer.add(this.quickViewContainer);
+
     this.iconAnimHandler = new PokemonIconAnimHandler();
     this.iconAnimHandler.setup();
 
@@ -288,6 +300,8 @@ export default class PartyUiHandler extends MessageUiHandler {
     ui.add(this.moveInfoOverlay);
 
     this.options = [];
+
+    this.quickView = [];
 
     this.partySlots = [];
   }
@@ -320,6 +334,10 @@ export default class PartyUiHandler extends MessageUiHandler {
     this.partyBg.setTexture(`party_bg${globalScene.currentBattle.double ? "_double" : ""}`);
     this.populatePartySlots();
     this.setCursor(0);
+
+    if (this.partyUiMode === PartyUiMode.SHOW_MOVES_MODIFIER || PartyUiMode.MOVE_MODIFIER) {
+      this.showQuickView();
+    }
 
     return true;
   }
@@ -454,7 +472,7 @@ export default class PartyUiHandler extends MessageUiHandler {
                 (globalScene.getCurrentPhase() as CommandPhase).handleCommand(Command.POKEMON, this.cursor, option === PartyOption.PASS_BATON);
               }
             }
-            if (this.partyUiMode !== PartyUiMode.MODIFIER && this.partyUiMode !== PartyUiMode.TM_MODIFIER && this.partyUiMode !== PartyUiMode.MOVE_MODIFIER) {
+            if (this.partyUiMode !== PartyUiMode.MODIFIER && this.partyUiMode !== PartyUiMode.SHOW_MOVES_MODIFIER && this.partyUiMode !== PartyUiMode.TM_MODIFIER && this.partyUiMode !== PartyUiMode.MOVE_MODIFIER) {
               ui.playSelect();
             }
             return true;
@@ -611,6 +629,9 @@ export default class PartyUiHandler extends MessageUiHandler {
         }
         return true;
       } else if (button === Button.CANCEL) {
+        if (this.quickView.length) {
+          this.clearQuickView();
+        }
         if ((this.partyUiMode === PartyUiMode.MODIFIER_TRANSFER || this.partyUiMode === PartyUiMode.SPLICE) && this.transferMode) {
           this.clearTransfer();
           ui.playSelect();
@@ -740,8 +761,14 @@ export default class PartyUiHandler extends MessageUiHandler {
         }
         if (cursor < 6) {
           this.partySlots[cursor].select();
+          if (this.partyUiMode === PartyUiMode.SHOW_MOVES_MODIFIER || PartyUiMode.MOVE_MODIFIER) {
+            this.showQuickView();
+          }
         } else if (cursor === 6) {
           this.partyCancelButton.select();
+          if (this.quickView.length) {
+            this.clearQuickView();
+          }
         }
       }
     }
@@ -768,6 +795,9 @@ export default class PartyUiHandler extends MessageUiHandler {
   showOptions() {
     if (this.cursor === 6) {
       return;
+    }
+    if (this.quickView.length) {
+      this.clearQuickView();
     }
 
     this.optionsMode = true;
@@ -858,6 +888,7 @@ export default class PartyUiHandler extends MessageUiHandler {
           this.options.push(PartyOption.REVIVE);
           break;
         case PartyUiMode.MODIFIER:
+        case PartyUiMode.SHOW_MOVES_MODIFIER:
           this.options.push(PartyOption.APPLY);
           break;
         case PartyUiMode.TM_MODIFIER:
@@ -1039,6 +1070,81 @@ export default class PartyUiHandler extends MessageUiHandler {
     }
   }
 
+  showQuickView(): void {
+    if (this.cursor === 6) {
+      return;
+    }
+
+    this.updateQuickView();
+  }
+
+  updateQuickView(): void {
+    const pokemon = globalScene.getPlayerParty()[this.cursor];
+
+    if (this.quickView.length) {
+      this.quickView.splice(0, this.quickView.length);
+      this.quickViewContainer.removeAll(true);
+    }
+
+    if (this.partyUiMode === PartyUiMode.MOVE_MODIFIER || this.partyUiMode === PartyUiMode.SHOW_MOVES_MODIFIER) {
+      for (let m = 0; m < pokemon.moveset.length; m++) {
+        this.quickView.push(PartyOption.MOVE_1 + m);
+      }
+    }
+
+    const optionStartIndex = 0;
+    const optionEndIndex = this.quickView.length;
+
+    this.quickViewBg = addWindow(0, 0, 0, 16 * this.quickView.length + 13);
+    this.quickViewBg.setOrigin(1, 1);
+
+    this.quickViewContainer.add(this.quickViewBg);
+
+    let widestOptionWidth = 0;
+    const optionTexts: BBCodeText[] = [];
+
+    for (let o = optionStartIndex; o < optionEndIndex; o++) {
+      const option = this.quickView[this.quickView.length - (o + 1)];
+      let optionName = "";
+      if (option === PartyOption.SCROLL_UP) {
+        optionName = "↑";
+      } else if (option === PartyOption.SCROLL_DOWN) {
+        optionName = "↓";
+      } else if (this.partyUiMode === PartyUiMode.MOVE_MODIFIER || this.partyUiMode === PartyUiMode.SHOW_MOVES_MODIFIER) {
+        switch (option) {
+          case PartyOption.MOVE_1:
+          case PartyOption.MOVE_2:
+          case PartyOption.MOVE_3:
+          case PartyOption.MOVE_4:
+            const move = pokemon.moveset[option - PartyOption.MOVE_1]!; // TODO: is the bang correct?
+            const maxPP = move.getMovePp();
+            const currPP = maxPP - move.ppUsed;
+            optionName = `${move.getName()} ${currPP}/${maxPP}`;
+            break;
+          default:
+            return;
+        }
+      }
+
+      const yCoord = -6 - 16 * o;
+      const optionText = addBBCodeTextObject(0, yCoord - 16, optionName, TextStyle.WINDOW, { maxLines: 1 });
+      optionText.setOrigin(0, 0);
+
+      optionText.setText(`[shadow]${optionText.text}[/shadow]`);
+
+      optionTexts.push(optionText);
+
+      widestOptionWidth = Math.max(optionText.displayWidth, widestOptionWidth);
+
+      this.quickViewContainer.add(optionText);
+    }
+
+    this.quickViewBg.width = Math.max(widestOptionWidth + 24, 94);
+    for (const optionText of optionTexts) {
+      optionText.x = 15 - this.quickViewBg.width;
+    }
+  }
+
   startTransfer(): void {
     this.transferMode = true;
     this.transferCursor = this.cursor;
@@ -1138,6 +1244,11 @@ export default class PartyUiHandler extends MessageUiHandler {
 
     this.partyMessageBox.setSize(262, 30);
     this.showText("", 0);
+  }
+
+  clearQuickView() {
+    this.quickView.splice(0, this.quickView.length);
+    this.quickViewContainer.removeAll(true);
   }
 
   eraseOptionsCursor() {
