@@ -164,11 +164,13 @@ export abstract class Modifier {
 export abstract class PersistentModifier extends Modifier {
   public stackCount: number;
   public virtualStackCount: number;
+  private iconSprite: Phaser.GameObjects.Sprite | null;
 
   constructor(type: ModifierType, stackCount?: number) {
     super(type);
     this.stackCount = stackCount === undefined ? 1 : stackCount;
     this.virtualStackCount = 0;
+    this.iconSprite = null;
   }
 
   add(modifiers: PersistentModifier[], virtual: boolean): boolean {
@@ -218,10 +220,14 @@ export abstract class PersistentModifier extends Modifier {
   getIcon(forSummary?: boolean): Phaser.GameObjects.Container {
     const container = globalScene.add.container(0, 0);
 
-    const item = globalScene.add.sprite(0, 12, "items");
-    item.setFrame(this.type.iconImage);
-    item.setOrigin(0, 0.5);
-    container.add(item);
+    if (this.iconSprite) {
+      this.iconSprite.destroy();
+    }
+
+    this.iconSprite = globalScene.add.sprite(0, 12, "items");
+    this.iconSprite.setFrame(this.type.iconImage);
+    this.iconSprite.setOrigin(0, 0.5);
+    container.add(this.iconSprite);
 
     const stackText = this.getIconStackText();
     if (stackText) {
@@ -234,6 +240,13 @@ export abstract class PersistentModifier extends Modifier {
     }
 
     return container;
+  }
+
+  setIconGlow() {
+    if (!isNullOrUndefined(this.iconSprite)) {
+      this.iconSprite.setTintFill(0xffffff);
+      globalScene.time.delayedCall(1800, () => this.iconSprite?.clearTint());
+    }
   }
 
   getIconStackText(virtual?: boolean): Phaser.GameObjects.BitmapText | null {

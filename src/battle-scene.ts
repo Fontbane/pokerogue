@@ -2987,6 +2987,7 @@ export default class BattleScene extends SceneBase {
     for (const modifier of modifiers) {
       if (modifier.apply(...args)) {
         console.log("Applied", modifier.type.name, !player ? "(enemy)" : "");
+        modifier.setIconGlow();
         appliedModifiers.push(modifier);
       }
     }
