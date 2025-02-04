@@ -19,7 +19,7 @@ export class PokerogueSessionSavedataApi extends ApiBase {
    * Mark a session as cleared aka "newclear".\
    * *This is **NOT** the same as {@linkcode clear | clear()}.*
    * @param params The {@linkcode NewClearSessionSavedataRequest} to send
-   * @returns The raw savedata as `string`.
+   * @returns 1 for true response, 0 for false response, 2 for error.
    */
   public async newclear(params: NewClearSessionSavedataRequest) {
     try {
@@ -27,10 +27,10 @@ export class PokerogueSessionSavedataApi extends ApiBase {
       const response = await this.doGet(`/savedata/session/newclear?${urlSearchParams}`);
       const json = await response.json();
 
-      return Boolean(json);
+      return Boolean(json) ? 1 : 0;
     } catch (err) {
       console.warn("Could not newclear session!", err);
-      return false;
+      return 2;
     }
   }
 

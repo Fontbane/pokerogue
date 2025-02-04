@@ -37,7 +37,7 @@ describe("Pokerogue Session Savedata API", () => {
 
       const success = await sessionSavedataApi.newclear(params);
 
-      expect(success).toBe(true);
+      expect(success).toBe(1);
     });
 
     it("should return false on FAILURE", async () => {
@@ -45,7 +45,7 @@ describe("Pokerogue Session Savedata API", () => {
 
       const success = await sessionSavedataApi.newclear(params);
 
-      expect(success).toBe(false);
+      expect(success).toBe(0);
     });
 
     it("should return false and report a warning on ERROR", async () => {
@@ -53,7 +53,7 @@ describe("Pokerogue Session Savedata API", () => {
 
       const success = await sessionSavedataApi.newclear(params);
 
-      expect(success).toBe(false);
+      expect(success).toBe(2);
       expect(console.warn).toHaveBeenCalledWith("Could not newclear session!", expect.any(Error));
     });
   });
