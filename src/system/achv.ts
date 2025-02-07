@@ -150,7 +150,7 @@ function chalAchvCondFunc(conds: ChallengeAchvConditions): ConditionFn {
   return (args: any[]) => {
     const c = args[0] as Challenge;
     return c.id === conds.id
-      && c.value === conds.value || 1
+      && c.value === (conds.value ?? 1)
       && (!conds.secondary || globalScene.gameMode.challenges.some(c => c.id === conds.secondary && (!conds.secondaryValue || c.value === conds.secondaryValue)))
       && (!globalScene.gameMode.challenges.some(c => conds.excludeChals?.includes(c.id) && c.value > 0));
   };

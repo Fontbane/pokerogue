@@ -1,10 +1,11 @@
 import { TurnHeldItemTransferModifier } from "#app/modifier/modifier";
-import { Achv, AchvTier, DamageAchv, HealAchv, LevelAchv, ModifierAchv, MoneyAchv, RibbonAchv, achvs } from "#app/system/achv";
+import { Achv, AchvTier, ChallengeAchv, DamageAchv, HealAchv, LevelAchv, ModifierAchv, MoneyAchv, RibbonAchv, achvs } from "#app/system/achv";
 import { IntegerHolder, NumberHolder } from "#app/utils";
 import GameManager from "#test/utils/gameManager";
 import Phaser from "phaser";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import BattleScene from "../../battle-scene";
+import { Challenges } from "#enums/challenges";
 
 describe("check some Achievement related stuff", () => {
   it ("should check Achievement creation", () => {
@@ -198,6 +199,14 @@ describe("ModifierAchv", () => {
   });
 });
 
+describe("ChallengeAchv", () => {
+  it("should create an instance of ChallengeAchv", () => {
+    const chalAchv = new ChallengeAchv("", "Test Challenge Achievement", "Test Description", "modifier_icon", 10, { id: Challenges.LOWER_MAX_STARTER_COST, value: 8, excludeChals: [ Challenges.LOWER_STARTER_POINTS ]});
+    expect(chalAchv).toBeInstanceOf(ChallengeAchv);
+    expect(chalAchv instanceof Achv).toBe(true);
+  });
+});
+
 describe("achvs", () => {
   it("should contain the predefined achievements", () => {
     expect(achvs._10K_MONEY).toBeInstanceOf(MoneyAchv);
@@ -240,6 +249,37 @@ describe("achvs", () => {
     expect(achvs.HIDDEN_ABILITY).toBeInstanceOf(Achv);
     expect(achvs.PERFECT_IVS).toBeInstanceOf(Achv);
     expect(achvs.CLASSIC_VICTORY).toBeInstanceOf(Achv);
+    expect(achvs.FRESH_START).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_BUG).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_DARK).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_DRAGON).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_ELECTRIC).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_FAIRY).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_FIGHTING).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_FIRE).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_FLYING).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_GHOST).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_GRASS).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_GROUND).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_ICE).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_NORMAL).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_POISON).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_PSYCHIC).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_ROCK).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_STEEL).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_WATER).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_GEN_ONE_VICTORY).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_GEN_TWO_VICTORY).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_GEN_THREE_VICTORY).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_GEN_FOUR_VICTORY).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_GEN_FIVE_VICTORY).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_GEN_SIX_VICTORY).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_GEN_SEVEN_VICTORY).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_GEN_EIGHT_VICTORY).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.MONO_GEN_NINE_VICTORY).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.FLIP_INVERSE).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.FLIP_STATS).toBeInstanceOf(ChallengeAchv);
+    expect(achvs.INVERSE_BATTLE).toBeInstanceOf(ChallengeAchv);
   });
 
   it("should initialize the achievements with IDs and parent IDs", () => {
