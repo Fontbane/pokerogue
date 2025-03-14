@@ -176,19 +176,15 @@ export class Arena {
       ret = getPokemonSpecies(species!);
 
       if (ret.subLegendary || ret.legendary || ret.mythical) {
-        switch (true) {
-          case ret.baseTotal >= 720:
-            regen = level < 90;
-            break;
-          case ret.baseTotal >= 670:
-            regen = level < 70;
-            break;
-          case ret.baseTotal >= 580:
-            regen = level < 50;
-            break;
-          default:
-            regen = level < 30;
-            break;
+        if (ret.baseTotal >= 720) {
+          regen = level < 90;
+        } else if (ret.baseTotal >= 660 || ret.speciesId === Species.TERAPAGOS) {
+          // Yeah we're special casing, cry about it
+          regen = level < 70;
+        } else if (ret.baseTotal >= 540) {
+          regen = level < 50;
+        } else {
+          regen = level < 30;
         }
       }
     }
