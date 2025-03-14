@@ -344,7 +344,7 @@ export function initMysteryEncounters() {
     _encounterBiomeTableLog += `${getBiomeName(biome).toUpperCase()}: [${biomeEncounters
       .map(type => MysteryEncounterType[type].toString().toLowerCase())
       .sort()
-      .join(", ")}]\n`;
+      .join(",")}]\n`;
   });
 
   //console.debug("All Mystery Encounters by Biome:\n" + encounterBiomeTableLog);
