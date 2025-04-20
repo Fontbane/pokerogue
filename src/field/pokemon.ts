@@ -91,6 +91,7 @@ import {
   PokemonIncrementingStatModifier,
   EvoTrackerModifier,
   PokemonMultiHitModifier,
+  SpeciesStatBoosterModifier,
 } from "#app/modifier/modifier";
 import { PokeballType } from "#enums/pokeball";
 import { Gender } from "#app/data/gender";
@@ -201,6 +202,7 @@ import type { LevelMoves } from "#app/data/balance/pokemon-level-moves";
 import {
   EVOLVE_MOVE,
   RELEARN_MOVE,
+  SECRET_MOVE,
 } from "#app/data/balance/pokemon-level-moves";
 import { DamageAchv, achvs } from "#app/system/achv";
 import type { StarterDataEntry, StarterMoveset } from "#app/system/game-data";
@@ -269,6 +271,7 @@ export enum LearnMoveSituation {
   EVOLUTION,
   EVOLUTION_FUSED, // If fusionSpecies has Evolved
   EVOLUTION_FUSED_BASE, // If fusion's base species has Evolved
+  SIMULATION, // For simulating an evo chain
 }
 
 export enum FieldPosition {
@@ -1975,7 +1978,7 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
    * by how many learnable moves there are for the {@linkcode Pokemon}.
    */
   public getLearnableLevelMoves(): Moves[] {
-    let levelMoves = this.getLevelMoves(1, true, false, true).map(lm => lm[1]);
+    let levelMoves = this.getLevelMoves(1, true, false, true, true, LearnMoveSituation.RELEARN).map(lm => lm[1]);
     if (
       this.metBiome === -1 &&
       !globalScene.gameMode.isFreshStartChallenge() &&
@@ -2923,7 +2926,8 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
    * @param {number} startingLevel Don't include moves below this level
    * @param {boolean} includeEvolutionMoves Whether to include evolution moves
    * @param {boolean} simulateEvolutionChain Whether to include moves from prior evolutions
-   * @param {boolean} includeRelearnerMoves Whether to include moves that would require a relearner. Note the move relearner inherently allows evolution moves
+   * @param {boolean} includeRelearnerMoves Whether to include moves that would require a relearner. Note the move relearner inherently allows evolution moves and secret moves are learned via relearn
+   * @param {boolean} includeSecretMoves Whether to include moves that have secret, bespoke unlock methods
    * @returns {LevelMoves} A list of moves and the levels they can be learned at
    */
   getLevelMoves(
@@ -2931,115 +2935,128 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
     includeEvolutionMoves = false,
     simulateEvolutionChain = false,
     includeRelearnerMoves = false,
+    includeSecretMoves = false,
     learnSituation: LearnMoveSituation = LearnMoveSituation.MISC,
   ): LevelMoves {
-    const ret: LevelMoves = [];
-    let levelMoves: LevelMoves = [];
-    if (!startingLevel) {
-      startingLevel = this.level;
-    }
+
+    // Evolutions only care about evolution moves, current-level moves, and secret moves
     if (
       learnSituation === LearnMoveSituation.EVOLUTION_FUSED &&
       this.fusionSpecies
     ) {
       // For fusion evolutions, get ONLY the moves of the component mon that evolved
-      levelMoves = this.getFusionSpeciesForm(true)
+      return this.getFusionSpeciesForm(true).getLevelMoves()
+        .filter(lm =>
+          lm[0] === EVOLVE_MOVE ||
+          lm[0] === this.level ||
+          (includeSecretMoves && lm[0] === SECRET_MOVE && this.validateSecretMove(lm[1], this.fusionSpecies!.speciesId, learnSituation))
+        );
+    }
+    else if (learnSituation === LearnMoveSituation.EVOLUTION_FUSED_BASE || learnSituation === LearnMoveSituation.EVOLUTION) {
+      return this.species.getLevelMoves()
+        .filter(lm =>
+          lm[0] === EVOLVE_MOVE ||
+          lm[0] === this.level ||
+          (includeSecretMoves && lm[0] === SECRET_MOVE && this.validateSecretMove(lm[1], this.species.speciesId, learnSituation))
+        );
+    }
+
+    const ret: LevelMoves = [];
+    let levelMoves: LevelMoves = [];
+    if (!startingLevel) {
+      startingLevel = this.level;
+    }
+    if (simulateEvolutionChain) {
+      const evolutionChain = this.species.getSimulatedEvolutionChain(
+        this.level,
+        this.hasTrainer(),
+        this.isBoss(),
+        this.isPlayer(),
+      );
+      for (let e = 0; e < evolutionChain.length; e++) {
+        // TODO: Might need to pass specific form index in simulated evolution chain
+        const speciesLevelMoves = getPokemonSpeciesForm(
+          evolutionChain[e][0],
+          this.formIndex,
+        ).getLevelMoves();
+        if (includeRelearnerMoves) {
+          levelMoves.push(...speciesLevelMoves.filter(lm => lm[0] !== SECRET_MOVE || (includeSecretMoves && this.validateSecretMove(lm[1], evolutionChain[e][0], learnSituation, true))));
+        } else {
+          levelMoves.push(
+            ...speciesLevelMoves.filter(
+              lm =>
+                (includeEvolutionMoves && lm[0] === EVOLVE_MOVE) ||
+                (includeSecretMoves && lm[0] === SECRET_MOVE && this.validateSecretMove(lm[1], this.species.speciesId, learnSituation, true)) ||
+                ((!e || lm[0] > 1) &&
+                  (e === evolutionChain.length - 1 ||
+                    lm[0] <= evolutionChain[e + 1][1])),
+            ),
+          );
+        }
+      }
+    } else {
+      levelMoves = this.getSpeciesForm(true)
         .getLevelMoves()
         .filter(
           lm =>
             (includeEvolutionMoves && lm[0] === EVOLVE_MOVE) ||
             (includeRelearnerMoves && lm[0] === RELEARN_MOVE) ||
+            (includeSecretMoves && lm[0] === SECRET_MOVE && this.validateSecretMove(lm[1], this.species.speciesId, learnSituation)) ||
             lm[0] > 0,
         );
-    } else {
+    }
+    if (
+      this.fusionSpecies
+    ) {
+      // Add moves from fusion species levelups
       if (simulateEvolutionChain) {
-        const evolutionChain = this.species.getSimulatedEvolutionChain(
-          this.level,
-          this.hasTrainer(),
-          this.isBoss(),
-          this.isPlayer(),
-        );
-        for (let e = 0; e < evolutionChain.length; e++) {
+        const fusionEvolutionChain =
+          this.fusionSpecies.getSimulatedEvolutionChain(
+            this.level,
+            this.hasTrainer(),
+            this.isBoss(),
+            this.isPlayer(),
+          );
+        for (let e = 0; e < fusionEvolutionChain.length; e++) {
           // TODO: Might need to pass specific form index in simulated evolution chain
           const speciesLevelMoves = getPokemonSpeciesForm(
-            evolutionChain[e][0],
-            this.formIndex,
+            fusionEvolutionChain[e][0],
+            this.fusionFormIndex,
           ).getLevelMoves();
           if (includeRelearnerMoves) {
-            levelMoves.push(...speciesLevelMoves);
+            levelMoves.push(
+              ...speciesLevelMoves.filter(
+                lm =>
+                  (includeEvolutionMoves && lm[0] === EVOLVE_MOVE) ||
+                  (includeSecretMoves && lm[0] === SECRET_MOVE && this.validateSecretMove(lm[1], fusionEvolutionChain[e][0], learnSituation, true)) ||
+                  (lm[0] !== EVOLVE_MOVE && lm[0] !== SECRET_MOVE),
+              ),
+            );
           } else {
             levelMoves.push(
               ...speciesLevelMoves.filter(
                 lm =>
                   (includeEvolutionMoves && lm[0] === EVOLVE_MOVE) ||
+                  (includeSecretMoves && lm[0] === SECRET_MOVE && this.validateSecretMove(lm[1], fusionEvolutionChain[e][0], learnSituation, true)) ||
                   ((!e || lm[0] > 1) &&
-                    (e === evolutionChain.length - 1 ||
-                      lm[0] <= evolutionChain[e + 1][1])),
+                    (e === fusionEvolutionChain.length - 1 ||
+                      lm[0] <= fusionEvolutionChain[e + 1][1])),
               ),
             );
           }
         }
       } else {
-        levelMoves = this.getSpeciesForm(true)
-          .getLevelMoves()
-          .filter(
-            lm =>
-              (includeEvolutionMoves && lm[0] === EVOLVE_MOVE) ||
-              (includeRelearnerMoves && lm[0] === RELEARN_MOVE) ||
-              lm[0] > 0,
-          );
-      }
-      if (
-        this.fusionSpecies &&
-        learnSituation !== LearnMoveSituation.EVOLUTION_FUSED_BASE
-      ) {
-        // For fusion evolutions, get ONLY the moves of the component mon that evolved
-        if (simulateEvolutionChain) {
-          const fusionEvolutionChain =
-            this.fusionSpecies.getSimulatedEvolutionChain(
-              this.level,
-              this.hasTrainer(),
-              this.isBoss(),
-              this.isPlayer(),
-            );
-          for (let e = 0; e < fusionEvolutionChain.length; e++) {
-            // TODO: Might need to pass specific form index in simulated evolution chain
-            const speciesLevelMoves = getPokemonSpeciesForm(
-              fusionEvolutionChain[e][0],
-              this.fusionFormIndex,
-            ).getLevelMoves();
-            if (includeRelearnerMoves) {
-              levelMoves.push(
-                ...speciesLevelMoves.filter(
-                  lm =>
-                    (includeEvolutionMoves && lm[0] === EVOLVE_MOVE) ||
-                    lm[0] !== EVOLVE_MOVE,
-                ),
-              );
-            } else {
-              levelMoves.push(
-                ...speciesLevelMoves.filter(
-                  lm =>
-                    (includeEvolutionMoves && lm[0] === EVOLVE_MOVE) ||
-                    ((!e || lm[0] > 1) &&
-                      (e === fusionEvolutionChain.length - 1 ||
-                        lm[0] <= fusionEvolutionChain[e + 1][1])),
-                ),
-              );
-            }
-          }
-        } else {
-          levelMoves.push(
-            ...this.getFusionSpeciesForm(true)
-              .getLevelMoves()
-              .filter(
-                lm =>
-                  (includeEvolutionMoves && lm[0] === EVOLVE_MOVE) ||
-                  (includeRelearnerMoves && lm[0] === RELEARN_MOVE) ||
-                  lm[0] > 0,
-              ),
-          );
-        }
+        levelMoves.push(
+          ...this.getFusionSpeciesForm(true)
+            .getLevelMoves()
+            .filter(
+              lm =>
+                (includeEvolutionMoves && lm[0] === EVOLVE_MOVE) ||
+                (includeRelearnerMoves && lm[0] === RELEARN_MOVE) ||
+                (includeSecretMoves && lm[0] === SECRET_MOVE && this.validateSecretMove(lm[1], this.species.speciesId, learnSituation)) ||
+                lm[0] > 0,
+            ),
+        );
       }
     }
     levelMoves.sort((lma: [number, number], lmb: [number, number]) =>
@@ -3051,16 +3068,14 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
      * Includes moves below startingLevel, or of specifically level 0 if
      * includeRelearnerMoves or includeEvolutionMoves are true respectively
      */
-    levelMoves = levelMoves.filter(lm => {
-      const level = lm[0];
-      const isRelearner = level < startingLevel;
-      const allowedEvolutionMove = level === 0 && includeEvolutionMoves;
-
-      return (
-        !(level > this.level) &&
-        (includeRelearnerMoves || !isRelearner || allowedEvolutionMove)
+    levelMoves = levelMoves.filter(lm => 
+        lm[0] <= this.level && (
+          lm[0] > 0 ||
+          (lm[0] === RELEARN_MOVE && includeRelearnerMoves) ||
+          (lm[0] === EVOLVE_MOVE && includeEvolutionMoves) ||
+          (lm[0] === SECRET_MOVE && includeSecretMoves)
+        )
       );
-    });
 
     /**
      * This must be done AFTER filtering by level, else if the same move shows up
@@ -3090,6 +3105,28 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
         ret.push(lm);
       }
     }
+  }
+
+  /**
+   * Checks if the mon could learn a move marked as {@linkcode SECRET_MOVE}. Different moves and species have different requirements.
+   * @param move {@linkcode Moves} the move being validated
+   * @param speciesId {@linkcode Species} the species learning it (could be base, fused, prevo etc)
+   * @param learnContext {@linkcode LearnMoveSituation} context for when the validation is occurring
+   * @param simulated whether this is being checked from a simulated evolution chain
+   * @returns whether the move can be learned for that species
+   */
+  validateSecretMove(move: Moves, speciesId: Species, learnContext: LearnMoveSituation, simulated: boolean = false): boolean {
+    switch (speciesId) {
+      case Species.PIKACHU:
+        if (move === Moves.VOLT_TACKLE && learnContext === LearnMoveSituation.RELEARN) {
+          // This is currently the best way to check for Light Ball
+          console.log("Check chu");
+          const ret = this.getHeldItems().some(m => (m as SpeciesStatBoosterModifier).contains(Species.PIKACHU, Stat.SPATK));
+          console.log(ret);
+          return ret;
+        }
+    }
+    return false;
   }
 
   /**
@@ -3416,7 +3453,7 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
       if (weight === 0) {
         weight = 50;
       }
-      // Assume level 1 moves with 80+ BP are "move reminder" moves and bump their weight
+      // Assume level 1 moves with 80+ BP are "move reminder" moves and bump their weight TODO: Use RELEARN_MOVE
       if (weight === 1 && allMoves[levelMove[1]].power >= 80) {
         weight = 40;
       }

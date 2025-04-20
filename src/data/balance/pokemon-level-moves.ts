@@ -15,6 +15,9 @@ interface PokemonSpeciesFormLevelMoves {
   [key: number]: PokemonFormLevelMoves
 }
 
+/** Moves that can only be learned by special means */
+export const SECRET_MOVE = -2;
+
 /** Moves that can only be learned with a memory-mushroom */
 export const RELEARN_MOVE = -1;
 /** Moves that can only be learned with an evolve */
@@ -393,6 +396,7 @@ export const pokemonSpeciesLevelMoves: PokemonSpeciesLevelMoves = {
     [ 63, Moves.GUNK_SHOT ],
   ],
   [Species.PIKACHU]: [
+    [ SECRET_MOVE, Moves.VOLT_TACKLE ],
     [ 1, Moves.TAIL_WHIP ],
     [ 1, Moves.GROWL ],
     [ 1, Moves.THUNDER_SHOCK ],
@@ -18937,6 +18941,7 @@ export const pokemonSpeciesLevelMoves: PokemonSpeciesLevelMoves = {
 export const pokemonFormLevelMoves: PokemonSpeciesFormLevelMoves = {
   [Species.PIKACHU]: { // Custom
     1: [
+      [ SECRET_MOVE, Moves.VOLT_TACKLE ],
       [ 1, Moves.TAIL_WHIP ],
       [ 1, Moves.GROWL ],
       [ 1, Moves.THUNDER_SHOCK ],
@@ -18962,6 +18967,7 @@ export const pokemonFormLevelMoves: PokemonSpeciesFormLevelMoves = {
       [ 48, Moves.PIKA_PAPOW ],
     ],
     2: [
+      [ SECRET_MOVE, Moves.VOLT_TACKLE ],
       [ 1, Moves.TAIL_WHIP ],
       [ 1, Moves.GROWL ],
       [ 1, Moves.THUNDER_SHOCK ],
@@ -18985,6 +18991,7 @@ export const pokemonFormLevelMoves: PokemonSpeciesFormLevelMoves = {
       [ 48, Moves.PIKA_PAPOW ],
     ],
     3: [
+      [ SECRET_MOVE, Moves.VOLT_TACKLE ],
       [ 1, Moves.METEOR_MASH ],
       [ 1, Moves.TAIL_WHIP ],
       [ 1, Moves.GROWL ],
@@ -19009,6 +19016,7 @@ export const pokemonFormLevelMoves: PokemonSpeciesFormLevelMoves = {
       [ 48, Moves.PIKA_PAPOW ],
     ],
     4: [
+      [ SECRET_MOVE, Moves.VOLT_TACKLE ],
       [ 1, Moves.ICICLE_CRASH ],
       [ 1, Moves.TAIL_WHIP ],
       [ 1, Moves.GROWL ],
@@ -19033,6 +19041,7 @@ export const pokemonFormLevelMoves: PokemonSpeciesFormLevelMoves = {
       [ 48, Moves.PIKA_PAPOW ],
     ],
     5: [
+      [ SECRET_MOVE, Moves.VOLT_TACKLE ],
       [ 1, Moves.DRAINING_KISS ],
       [ 1, Moves.TAIL_WHIP ],
       [ 1, Moves.GROWL ],
@@ -19057,6 +19066,7 @@ export const pokemonFormLevelMoves: PokemonSpeciesFormLevelMoves = {
       [ 48, Moves.PIKA_PAPOW ],
     ],
     6: [
+      [ SECRET_MOVE, Moves.VOLT_TACKLE ],
       [ 1, Moves.ELECTRIC_TERRAIN ],
       [ 1, Moves.TAIL_WHIP ],
       [ 1, Moves.GROWL ],
@@ -19081,6 +19091,7 @@ export const pokemonFormLevelMoves: PokemonSpeciesFormLevelMoves = {
       [ 48, Moves.PIKA_PAPOW ],
     ],
     7: [
+      [ SECRET_MOVE, Moves.VOLT_TACKLE ],
       [ 1, Moves.FLYING_PRESS ],
       [ 1, Moves.TAIL_WHIP ],
       [ 1, Moves.GROWL ],
@@ -19105,6 +19116,7 @@ export const pokemonFormLevelMoves: PokemonSpeciesFormLevelMoves = {
       [ 48, Moves.PIKA_PAPOW ],
     ],
     8: [
+      [ SECRET_MOVE, Moves.VOLT_TACKLE ],
       [ 1, Moves.TAIL_WHIP ],
       [ 1, Moves.GROWL ],
       [ 1, Moves.THUNDER_SHOCK ],

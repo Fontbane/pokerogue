@@ -1,6 +1,6 @@
 import { globalScene } from "#app/global-scene";
 import { ExpNotification } from "#app/enums/exp-notification";
-import type { PlayerPokemon } from "#app/field/pokemon";
+import { LearnMoveSituation, type PlayerPokemon } from "#app/field/pokemon";
 import { getPokemonNameWithAffix } from "#app/messages";
 import { EvolutionPhase } from "#app/phases/evolution-phase";
 import { LearnMovePhase } from "#app/phases/learn-move-phase";
@@ -63,7 +63,7 @@ export class LevelUpPhase extends PlayerPartyMemberPokemonPhase {
   public override end() {
     if (this.lastLevel < 100) {
       // this feels like an unnecessary optimization
-      const levelMoves = this.getPokemon().getLevelMoves(this.lastLevel + 1);
+      const levelMoves = this.getPokemon().getLevelMoves(this.lastLevel + 1, false, false, false, true, LearnMoveSituation.LEVEL_UP);
       for (const lm of levelMoves) {
         globalScene.unshiftPhase(new LearnMovePhase(this.partyMemberIndex, lm[1]));
       }

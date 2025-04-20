@@ -14,7 +14,7 @@ import { getNatureName } from "#app/data/nature";
 import type { SpeciesFormChange } from "#app/data/pokemon-forms";
 import { pokemonFormChanges } from "#app/data/pokemon-forms";
 import type { LevelMoves } from "#app/data/balance/pokemon-level-moves";
-import { pokemonFormLevelMoves, pokemonSpeciesLevelMoves } from "#app/data/balance/pokemon-level-moves";
+import { EVOLVE_MOVE, pokemonFormLevelMoves, pokemonSpeciesLevelMoves, RELEARN_MOVE, SECRET_MOVE } from "#app/data/balance/pokemon-level-moves";
 import type PokemonSpecies from "#app/data/pokemon-species";
 import { allSpecies, getPokemonSpecies, getPokemonSpeciesForm, normalForm } from "#app/data/pokemon-species";
 import { getStarterValueFriendshipCap, speciesStarterCosts } from "#app/data/balance/starters";
@@ -1200,7 +1200,7 @@ export default class PokedexPageUiHandler extends MessageUiHandler {
                   ui.setModeWithoutClear(UiMode.OPTION_SELECT, {
                     options: this.levelMoves
                       .map(m => {
-                        const levelNumber = m[0] > 0 ? String(m[0]) : "";
+                        const levelNumber = m[0] > EVOLVE_MOVE ? String(m[0]) : m[0] === SECRET_MOVE ? "?" : "";
                         const option: OptionSelectItem = {
                           label: levelNumber.padEnd(4, " ") + allMoves[m[1]].name,
                           handler: () => {
@@ -1208,13 +1208,19 @@ export default class PokedexPageUiHandler extends MessageUiHandler {
                           },
                           onHover: () => {
                             this.moveInfoOverlay.show(allMoves[m[1]]);
-                            if (m[0] === 0) {
+                            if (m[0] === EVOLVE_MOVE) {
                               this.showText(i18next.t("pokedexUiHandler:onlyEvolutionMove"));
-                            } else if (m[0] === -1) {
+                            }
+                            else if (m[0] === RELEARN_MOVE) {
                               this.showText(i18next.t("pokedexUiHandler:onlyRecallMove"));
-                            } else if (m[0] <= 5) {
+                            }
+                            else if (m[0] === SECRET_MOVE) {
+                              this.showText(i18next.t("pokedexUiHandler:secretMove"));
+                            }
+                            else if (m[0] <= 5) {
                               this.showText(i18next.t("pokedexUiHandler:onStarterSelectMove"));
-                            } else {
+                            }
+                            else {
                               this.showText(i18next.t("pokedexUiHandler:byLevelUpMove"));
                             }
                           },
