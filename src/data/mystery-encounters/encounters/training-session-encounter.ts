@@ -379,13 +379,6 @@ function getEnemyConfig(playerPokemon: PlayerPokemon, segments: number, modifier
 
   // Passes modifiers by reference
   modifiers.value = playerPokemon.getHeldItems();
-  const modifierConfigs = modifiers.value.map(mod => {
-    return {
-      modifier: mod.clone(),
-      isTransferable: false,
-      stackCount: mod.stackCount,
-    };
-  }) as HeldModifierConfig[];
 
   const data = new PokemonData(playerPokemon);
   return {
@@ -397,7 +390,7 @@ function getEnemyConfig(playerPokemon: PlayerPokemon, segments: number, modifier
         formIndex: playerPokemon.formIndex,
         level: playerPokemon.level,
         dataSource: data,
-        modifierConfigs: modifierConfigs,
+        modifierConfigs: [],
       },
     ],
   };
