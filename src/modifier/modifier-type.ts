@@ -1826,22 +1826,26 @@ function skipInLastClassicWaveOrDefault(defaultWeight: number): WeightedModifier
 }
 
 /**
- * High order function that returns a WeightedModifierTypeWeightFunc to ensure Lures don't spawn on Classic 199
- * or if the lure still has over 60% of its duration left
+ * High order function that returns a WeightedModifierTypeWeightFunc to ensure Lures don't spawn redundantly
+ * A lure is redundant if that type lure has 60% remaining or if an extra lure is no longer needed
  * @param maxBattles The max battles the lure type in question lasts. 10 for green, 15 for Super, 30 for Max
  * @param weight The desired weight for the lure when it does spawn
  * @returns A WeightedModifierTypeWeightFunc
  */
 function lureWeightFunc(maxBattles: number, weight: number): WeightedModifierTypeWeightFunc {
   return () => {
-    const lures = globalScene.getModifiers(DoubleBattleChanceBoosterModifier);
-    return !(globalScene.gameMode.isClassic && globalScene.currentBattle.waveIndex === 199) &&
-      (lures.length === 0 ||
-        lures.filter(m => m.getMaxBattles() === maxBattles && m.getBattleCount() >= maxBattles * 0.6).length === 0)
-      ? weight
-      : 0;
-  };
+    const lures = globalScene.getModifiers(DoubleBattleChanceBoosterModifier)
+      .map(m => [m.getMaxBattles(), m.getMaxBattles() - m.getBattleCount()])
+      .sort((a, b) => a[1] - b[1]) || []; // Lures as [max, remaining] tuples sorted by remaining waves
+    const cur = lures.findIndex(m => m[0] === maxBattles);
+    if (cur === -1) {
+     return globalScene.gameMode.getRemainingLureWaves(globalScene.currentBattle.waveIndex, lures.length + 1) <= 0 ? 0 : weight;
+    }
+    const r = globalScene.gameMode.getRemainingLureWaves(globalScene.currentBattle.waveIndex, cur); // How many more waves this many lure needed
+    return r > lures[cur][1] && lures[cur][1] < maxBattles * 0.6 ? weight : 0;
+  }
 }
+
 class WeightedModifierType {
   public modifierType: ModifierType;
   public weight: number | WeightedModifierTypeWeightFunc;

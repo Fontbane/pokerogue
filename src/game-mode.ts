@@ -383,6 +383,16 @@ export class GameMode implements GameModeConfig {
         return i18next.t("gameMode:challenge");
     }
   }
+
+  getRemainingLureWaves(waveIndex: number, lures: number): number {
+    if (this.isClassic) {
+      return lures === 3 ? 180 - waveIndex : 199 - waveIndex; // Last possible double-boss is at 180
+    }
+    if (this.isDaily) {
+      return 10 - waveIndex; // Only possible double-boss is at 10
+    }
+    return 100; // Endless has a static amount
+  }
 }
 
 export function getGameMode(gameMode: GameModes): GameMode {
