@@ -110,7 +110,7 @@ import type { SuppressAbilitiesTag } from "#app/data/arena-tag";
 import type { Ability, PreAttackModifyDamageAbAttrParams } from "#app/data/abilities/ability";
 import { applyAbAttrs, applyOnGainAbAttrs, applyOnLoseAbAttrs } from "#app/data/abilities/apply-ab-attrs";
 import { allAbilities } from "#app/data/data-lists";
-import type PokemonData from "#app/system/pokemon-data";
+import PokemonData from "#app/system/pokemon-data";
 import { BattlerIndex } from "#enums/battler-index";
 import { UiMode } from "#enums/ui-mode";
 import type { PartyOption } from "#app/ui/party-ui-handler";
@@ -184,6 +184,7 @@ import type { DamageCalculationResult, DamageResult } from "#app/@types/damage-r
 import type { AbAttrMap, AbAttrString, TypeMultiplierAbAttrParams } from "#app/@types/ability-types";
 import { getTerrainBlockMessage } from "#app/data/terrain";
 import { LearnMoveSituation } from "#enums/learn-move-situation";
+import { PokemonPregenData } from "#app/@types/pokemon-pregen-data";
 
 /** Base typeclass for damage parameter methods, used for DRY */
 type damageParams = {
@@ -208,6 +209,14 @@ type damageParams = {
   /** If defined, used in place of calculated effectiveness values */
   effectiveness?: number;
 };
+
+/**
+ * Type for the main parameters of {@linkcode Pokemon} constructor. Contains:
+ * - Partial {@linkcode PokemonData} object
+ * - Required level
+ * - Required species, which can be a SpeciesId or PokemonSpecies unlike in PokemonData
+ * */
+export type PokemonParams = Partial<Omit<PokemonData, "species">> & Pick<PokemonData, "level"> & {species: SpeciesId | PokemonSpecies};
 
 /** Type for the parameters of {@linkcode Pokemon#getBaseDamage | getBaseDamage} */
 type getBaseDamageParams = Omit<damageParams, "effectiveness">;
@@ -301,119 +310,90 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
   constructor(
     x: number,
     y: number,
-    species: PokemonSpecies,
-    level: number,
-    abilityIndex?: number,
-    formIndex?: number,
-    gender?: Gender,
-    shiny?: boolean,
-    variant?: Variant,
-    ivs?: number[],
-    nature?: Nature,
-    dataSource?: Pokemon | PokemonData,
+    dataSource: Pokemon | PokemonData | PokemonParams,
+    pregenData?: PokemonPregenData,
   ) {
     super(globalScene, x, y);
 
-    if (!species.isObtainable() && this.isPlayer()) {
-      throw `Cannot create a player Pokemon for species "${species.getName(formIndex)}"`;
-    }
+    const fullData = dataSource instanceof Pokemon || dataSource instanceof PokemonData;
 
-    this.species = species;
-    this.pokeball = dataSource?.pokeball || PokeballType.POKEBALL;
-    this.level = level;
+    this.species = dataSource.species instanceof PokemonSpecies ? dataSource.species : getPokemonSpecies(dataSource.species);
 
-    this.abilityIndex = abilityIndex ?? this.generateAbilityIndex();
-
-    if (formIndex !== undefined) {
-      this.formIndex = formIndex;
-    }
-    if (gender !== undefined) {
-      this.gender = gender;
-    }
-    if (shiny !== undefined) {
-      this.shiny = shiny;
-    }
-    if (variant !== undefined) {
-      this.variant = variant;
-    }
-    this.exp = dataSource?.exp || getLevelTotalExp(this.level, species.growthRate);
-    this.levelExp = dataSource?.levelExp || 0;
-
-    if (dataSource) {
+    if (!isNullOrUndefined(dataSource.id)) {
       this.id = dataSource.id;
-      this.hp = dataSource.hp;
-      this.stats = dataSource.stats;
-      this.ivs = dataSource.ivs;
-      this.passive = !!dataSource.passive;
-      if (this.variant === undefined) {
-        this.variant = 0;
-      }
-      this.nature = dataSource.nature || (0 as Nature);
-      this.nickname = dataSource.nickname;
-      this.moveset = dataSource.moveset;
-      this.status = dataSource.status!; // TODO: is this bang correct?
-      this.friendship = dataSource.friendship ?? this.species.baseFriendship;
-      this.metLevel = dataSource.metLevel || 5;
-      this.luck = dataSource.luck;
-      this.metBiome = dataSource.metBiome;
-      this.metSpecies =
-        dataSource.metSpecies ?? (this.metBiome !== -1 ? this.species.speciesId : this.species.getRootSpeciesId(true));
-      this.metWave = dataSource.metWave ?? (this.metBiome === -1 ? -1 : 0);
-      this.pauseEvolutions = dataSource.pauseEvolutions;
-      this.pokerus = !!dataSource.pokerus;
-      this.fusionSpecies =
-        dataSource.fusionSpecies instanceof PokemonSpecies
-          ? dataSource.fusionSpecies
-          : dataSource.fusionSpecies
-            ? getPokemonSpecies(dataSource.fusionSpecies)
-            : null;
-      this.fusionFormIndex = dataSource.fusionFormIndex;
-      this.fusionAbilityIndex = dataSource.fusionAbilityIndex;
-      this.fusionShiny = dataSource.fusionShiny;
-      this.fusionVariant = dataSource.fusionVariant || 0;
-      this.fusionGender = dataSource.fusionGender;
-      this.fusionLuck = dataSource.fusionLuck;
-      this.fusionCustomPokemonData = dataSource.fusionCustomPokemonData;
-      this.fusionTeraType = dataSource.fusionTeraType;
-      this.usedTMs = dataSource.usedTMs ?? [];
-      this.customPokemonData = new CustomPokemonData(dataSource.customPokemonData);
-      this.teraType = dataSource.teraType;
-      this.isTerastallized = dataSource.isTerastallized;
-      this.stellarTypesBoosted = dataSource.stellarTypesBoosted ?? [];
     } else {
       this.id = randSeedInt(4294967296);
-      this.ivs = ivs || getIvsFromId(this.id);
-
-      if (this.gender === undefined) {
-        this.generateGender();
+    }
+    this.ivs = dataSource.ivs ?? getIvsFromId(this.id);
+    if (!isNullOrUndefined(dataSource.gender)) {
+      this.gender = dataSource.gender;
+    } else {
+      this.generateGender();
+    }
+    this.abilityIndex = dataSource.abilityIndex ?? this.generateAbilityIndex();
+    this.formIndex = dataSource.formIndex ?? globalScene.getSpeciesFormIndex(this.species, this.gender, this.nature, this.isPlayer());
+    if (!isNullOrUndefined(dataSource.nature)) {
+      this.nature = dataSource.nature;
+    }
+    if (!isNullOrUndefined(dataSource.formIndex)) {
+      this.formIndex = dataSource.formIndex;
+    } else if (pregenData?.randomFormIndex) {
+      this.formIndex = randSeedItem(pregenData.randomFormIndex) || 0;
+    } else {
+      this.formIndex = globalScene.getSpeciesFormIndex(this.species, this.gender, this.nature, this.isPlayer());
+    }
+    this.pokeball = dataSource.pokeball ?? PokeballType.POKEBALL;
+    this.level = dataSource.level;
+    if (!isNullOrUndefined(dataSource.shiny)) {
+      this.shiny = dataSource.shiny;
+      this.variant = dataSource.variant ?? 0;
+    } else if (this.isEnemy() && (pregenData?.shinyLock || Overrides.OPP_SHINY_OVERRIDE === false)) {
+      this.shiny = false;
+    } else {
+      this.trySetShiny();
+      if (this.shiny) {
+        this.variant = this.generateShinyVariant();
       }
+    }
+    this.exp = dataSource.exp || getLevelTotalExp(this.level, this.species.growthRate);
+    this.levelExp = dataSource.levelExp || 0;
+    if (dataSource.hp) {
+      this.hp = dataSource.hp;
+    }
+    if (dataSource.stats) {
+      this.stats = dataSource.stats;
+    }
+    this.passive = !!dataSource.passive;
+    if (isNullOrUndefined(dataSource.nature)) {
+      this.generateNature(pregenData?.randomNature ?? []);
+    }
+    if (dataSource.nickname) {
+      this.nickname = dataSource.nickname;
+    }
+    this.moveset = dataSource.moveset ?? [];
+    this.status = dataSource.status || null;
+    this.friendship = dataSource.friendship ?? this.species.baseFriendship;
+    this.metLevel = dataSource.metLevel || 5;
+    this.metBiome = dataSource.metBiome ?? globalScene.currentBattle ? globalScene.arena.biomeType : -1;
+    this.metSpecies =
+      dataSource.metSpecies ?? (this.metBiome !== -1 ? this.species.speciesId : this.species.getRootSpeciesId(true));
+    this.metWave =
+      dataSource.metWave ??
+        (this.metBiome === -1 ?
+          -1 : globalScene.currentBattle ?
+          globalScene.currentBattle.waveIndex : 0);
+    this.pauseEvolutions = !!dataSource.pauseEvolutions;
+    this.pokerus = !!dataSource.pokerus;
+    this.luck = this.shiny ? this.variant + 1 : 0;
 
-      if (this.formIndex === undefined) {
-        this.formIndex = globalScene.getSpeciesFormIndex(species, this.gender, this.nature, this.isPlayer());
-      }
-
-      if (this.shiny === undefined) {
-        this.trySetShiny();
-      }
-
-      if (this.variant === undefined) {
-        this.variant = this.shiny ? this.generateShinyVariant() : 0;
-      }
-
-      if (nature !== undefined) {
-        this.setNature(nature);
-      } else {
-        this.generateNature();
-      }
-
-      this.friendship = species.baseFriendship;
-      this.metLevel = level;
-      this.metBiome = globalScene.currentBattle ? globalScene.arena.biomeType : -1;
-      this.metSpecies = species.speciesId;
-      this.metWave = globalScene.currentBattle ? globalScene.currentBattle.waveIndex : -1;
-      this.pokerus = false;
-
-      if (level > 1) {
+    this.fusionSpecies =
+      dataSource.fusionSpecies instanceof PokemonSpecies
+        ? dataSource.fusionSpecies
+        : dataSource.fusionSpecies
+          ? getPokemonSpecies(dataSource.fusionSpecies)
+          : null;
+    if (dataSource.fusionSpecies === undefined) {
+      if (this.level > 1) {
         const fused = new BooleanHolder(globalScene.gameMode.isSplicedOnly);
         if (!fused.value && this.isEnemy() && !this.hasTrainer()) {
           globalScene.applyModifier(EnemyFusionChanceModifier, false, fused);
@@ -424,12 +404,32 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
           this.generateFusionSpecies();
         }
       }
-      this.luck = (this.shiny ? this.variant + 1 : 0) + (this.fusionShiny ? this.fusionVariant + 1 : 0);
-      this.fusionLuck = this.luck;
+    } else if (this.fusionSpecies) {
+      this.fusionFormIndex = dataSource.fusionFormIndex!;
+      this.fusionAbilityIndex = dataSource.fusionAbilityIndex!;
+      this.fusionShiny = dataSource.fusionShiny!;
+      this.fusionGender = dataSource.fusionGender!;
+      this.fusionCustomPokemonData = dataSource.fusionCustomPokemonData ? new CustomPokemonData(dataSource.fusionCustomPokemonData) : null;
+      this.fusionTeraType = dataSource.fusionTeraType!;
+      this.fusionVariant = dataSource.fusionVariant || 0;
+      this.luck += this.fusionShiny ? this.fusionVariant + 1 : 0;
+      this.fusionLuck = dataSource.fusionLuck ?? this.luck;
+    }
 
+    this.usedTMs = dataSource.usedTMs ?? [];
+    this.customPokemonData = new CustomPokemonData(dataSource.customPokemonData);
+    if (dataSource.teraType) {
+      this.teraType = dataSource.teraType;
+    }
+    this.isTerastallized = !!dataSource.isTerastallized;
+    this.stellarTypesBoosted = dataSource.stellarTypesBoosted ?? [];
+
+    if (isNullOrUndefined(this.teraType)) {
       this.teraType = randSeedItem(this.getTypes(false, false, true));
-      this.isTerastallized = false;
-      this.stellarTypesBoosted = [];
+    }
+
+    if (!this.species.isObtainable() && this.isPlayer()) {
+      throw `Cannot create a player Pokemon for species "${this.species.getName(this.formIndex)}"`;
     }
 
     this.summonData = new PokemonSummonData(dataSource?.summonData);
@@ -437,7 +437,7 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
 
     this.generateName();
 
-    if (!species.isObtainable()) {
+    if (!this.species.isObtainable()) {
       this.shiny = false;
     }
 
@@ -2990,10 +2990,30 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
   }
 
   /** Generates a semi-random moveset for a Pokemon */
-  public generateAndPopulateMoveset(): void {
+  public generateAndPopulateMoveset(pregenData?: PokemonPregenData): void {
     this.moveset = [];
+    if (pregenData?.moves) {
+      pregenData.moves.forEach(m => this.moveset.push(new PokemonMove(m)));
+    }
+    if (this.moveset.length === 4) {
+      // Trigger FormChange, except for enemy Pokemon during Mystery Encounters, to avoid crashes
+      if (
+        this.isPlayer() ||
+        !globalScene.currentBattle?.isBattleMysteryEncounter() ||
+        !globalScene.currentBattle?.mysteryEncounter
+      ) {
+        globalScene.triggerPokemonFormChange(this, SpeciesFormChangeMoveLearnedTrigger);
+      }
+      return;
+    }
+    const teraMon = !!pregenData?.instantTera;
+    const stabTypes = this.getTypes(pregenData?.useTeraAsSTAB);
+    if (pregenData?.preferredCoverageType) {
+      stabTypes.push(pregenData.preferredCoverageType);
+    }
+
     let movePool: [MoveId, number][] = [];
-    const allLevelMoves = this.getLevelMoves(1, true, true);
+    const allLevelMoves = this.getLevelMoves(1, true, true, this.hasTrainer());
     if (!allLevelMoves) {
       console.warn("Error encountered trying to generate moveset for:", this.species.name);
       return;
@@ -3114,6 +3134,9 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
       ]);
     }
 
+    // Remove any duplicates from movepool
+    movePool = movePool.filter(mp => !this.moveset.some(m => m.moveId === mp[0]));
+
     // Weight towards higher power moves, by reducing the power of moves below the highest power.
     // Caps max power at 90 to avoid something like hyper beam ruining the stats.
     // This is a pretty soft weighting factor, although it is scaled with the weight multiplier.
@@ -3138,7 +3161,7 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
     const statRatio = worseCategory === MoveCategory.PHYSICAL ? atk / spAtk : spAtk / atk;
     movePool = movePool.map(m => [
       m[0],
-      m[1] * (allMoves[m[0]].category === worseCategory ? Math.min(Math.pow(statRatio, 3) * 1.3, 1) : 1),
+      m[1] * (allMoves[m[0]].category === worseCategory && !(teraMon && m[0] === MoveId.TERA_BLAST) ? Math.min(Math.pow(statRatio, 3) * 1.3, 1) : 1),
     ]);
 
     /** The higher this is the more the game weights towards higher level moves. At `0` all moves are equal weight. */
@@ -3151,19 +3174,23 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
       Math.ceil(Math.pow(m[1], weightMultiplier) * 100),
     ]);
 
-    // All Pokemon force a STAB move first
-    const stabMovePool = baseWeights.filter(
-      m => allMoves[m[0]].category !== MoveCategory.STATUS && this.isOfType(allMoves[m[0]].type),
-    );
+    if (!this.moveset.some(mp => mp.getMove().category !== MoveCategory.STATUS && stabTypes.includes(mp.getMove().type))) {
+      // All Pokemon force a STAB move first, unless they already have one
+      const stabMovePool = baseWeights.filter(
+        m => allMoves[m[0]].category !== MoveCategory.STATUS &&
+          (stabTypes.includes(allMoves[m[0]].type) ||
+          m[0] === MoveId.TERA_BLAST && teraMon),
+      );
 
-    if (stabMovePool.length) {
-      const totalWeight = stabMovePool.reduce((v, m) => v + m[1], 0);
-      let rand = randSeedInt(totalWeight);
-      let index = 0;
-      while (rand > stabMovePool[index][1]) {
-        rand -= stabMovePool[index++][1];
+      if (stabMovePool.length) {
+        const totalWeight = stabMovePool.reduce((v, m) => v + m[1], 0);
+        let rand = randSeedInt(totalWeight);
+        let index = 0;
+        while (rand > stabMovePool[index][1]) {
+          rand -= stabMovePool[index++][1];
+        }
+        this.moveset.push(new PokemonMove(stabMovePool[index][0]));
       }
-      this.moveset.push(new PokemonMove(stabMovePool[index][0]));
     }
 
     while (baseWeights.length > this.moveset.length && this.moveset.length < 4) {
@@ -3192,7 +3219,7 @@ export default abstract class Pokemon extends Phaser.GameObjects.Container {
               ret = Math.ceil(
                 (m[1] /
                   Math.max(Math.pow(4, this.moveset.filter(mo => (mo.getMove().power ?? 0) > 1).length) / 8, 0.5)) *
-                  (this.isOfType(allMoves[m[0]].type) ? 20 : 1),
+                  (stabTypes.includes(allMoves[m[0]].type) ? 20 : 1),
               );
             } else {
               ret = m[1];
@@ -5599,18 +5626,10 @@ export class PlayerPokemon extends Pokemon {
   public compatibleTms: MoveId[];
 
   constructor(
-    species: PokemonSpecies,
-    level: number,
-    abilityIndex?: number,
-    formIndex?: number,
-    gender?: Gender,
-    shiny?: boolean,
-    variant?: Variant,
-    ivs?: number[],
-    nature?: Nature,
-    dataSource?: Pokemon | PokemonData,
+    dataSource: Pokemon | PokemonData,
+    pregenData?: PokemonPregenData,
   ) {
-    super(106, 148, species, level, abilityIndex, formIndex, gender, shiny, variant, ivs, nature, dataSource);
+    super(106, 148, dataSource, pregenData);
 
     if (Overrides.STATUS_OVERRIDE) {
       this.status = new Status(Overrides.STATUS_OVERRIDE, 0, 4);
@@ -5627,13 +5646,10 @@ export class PlayerPokemon extends Pokemon {
       this.variant = Overrides.VARIANT_OVERRIDE;
     }
 
-    if (!dataSource) {
-      if (globalScene.gameMode.isDaily) {
-        this.generateAndPopulateMoveset();
-      } else {
-        this.moveset = [];
-      }
+    if (!this.moveset.length) {
+      this.generateAndPopulateMoveset(pregenData);
     }
+
     this.generateCompatibleTms();
   }
 
@@ -6134,33 +6150,26 @@ export class EnemyPokemon extends Pokemon {
   public readonly isPopulatedFromDataSource: boolean;
 
   constructor(
-    species: PokemonSpecies,
-    level: number,
     trainerSlot: TrainerSlot,
-    boss: boolean,
-    shinyLock = false,
-    dataSource?: PokemonData,
+    dataSource: PokemonData | PokemonParams,
+    pregenData?: PokemonPregenData,
   ) {
     super(
       236,
       84,
-      species,
-      level,
-      dataSource?.abilityIndex,
-      dataSource?.formIndex,
-      dataSource?.gender,
-      !shinyLock && dataSource ? dataSource.shiny : false,
-      !shinyLock && dataSource ? dataSource.variant : undefined,
-      undefined,
-      dataSource ? dataSource.nature : undefined,
       dataSource,
+      pregenData
     );
 
     this.trainerSlot = trainerSlot;
     this.initialTeamIndex = globalScene.currentBattle?.enemyParty.length ?? 0;
-    this.isPopulatedFromDataSource = !!dataSource; // if a dataSource is provided, then it was populated from dataSource
-    if (boss) {
-      this.setBoss(boss, dataSource?.bossSegments);
+    this.isPopulatedFromDataSource = dataSource instanceof PokemonData; // if a full dataSource is provided, then it was populated from dataSource
+    if (dataSource.boss) {
+      this.setBoss(true, dataSource.bossSegments);
+      // If the passive is explicitly set to false, disable the boss's passive
+      if (dataSource.passive === false) {
+        this.passive = false;
+      }
     }
 
     if (Overrides.OPP_STATUS_OVERRIDE) {
@@ -6181,39 +6190,49 @@ export class EnemyPokemon extends Pokemon {
       this.formIndex = Overrides.OPP_FORM_OVERRIDES[speciesId];
     }
 
-    if (!dataSource) {
-      this.generateAndPopulateMoveset();
-      if (shinyLock || Overrides.OPP_SHINY_OVERRIDE === false) {
-        this.shiny = false;
-      } else {
-        this.trySetShiny();
-      }
-
-      if (!this.shiny && Overrides.OPP_SHINY_OVERRIDE) {
-        this.shiny = true;
-        this.initShinySparkle();
-      }
-
-      if (this.shiny) {
-        this.variant = this.generateShinyVariant();
-        if (Overrides.OPP_VARIANT_OVERRIDE !== null) {
-          this.variant = Overrides.OPP_VARIANT_OVERRIDE;
-        }
-      }
-
-      this.luck = (this.shiny ? this.variant + 1 : 0) + (this.fusionShiny ? this.fusionVariant + 1 : 0);
-
-      if (this.hasTrainer() && globalScene.currentBattle) {
-        const { waveIndex } = globalScene.currentBattle;
-        const ivs: number[] = [];
-        while (ivs.length < 6) {
-          ivs.push(randSeedIntRange(Math.floor(waveIndex / 10), 31));
-        }
-        this.ivs = ivs;
-      }
+    if (this.moveset.length === 0) {
+      this.generateAndPopulateMoveset(pregenData);
     }
 
-    this.aiType = boss || this.hasTrainer() ? AiType.SMART : AiType.SMART_RANDOM;
+    if (!this.shiny && Overrides.OPP_SHINY_OVERRIDE) {
+      this.shiny = true;
+      this.initShinySparkle();
+      this.variant = this.generateShinyVariant();
+    }
+
+    if (this.shiny && Overrides.OPP_VARIANT_OVERRIDE !== null) {
+      this.variant = Overrides.OPP_VARIANT_OVERRIDE;
+      this.luck = (this.shiny ? this.variant + 1 : 0) + (this.fusionShiny ? this.fusionVariant + 1 : 0);
+    }
+
+    // Generate IVs, using preferences configured in pregen
+    if (this.hasTrainer() && globalScene.currentBattle && !dataSource.ivs) {
+      const ivs: number[] = [-1, -1, -1, -1, -1, -1];
+      const minIv = pregenData?.minIv ?? Math.floor(globalScene.currentBattle.waveIndex / 10);
+      let maxes = pregenData?.guaranteedMaxIvs ?? 0;
+      const nonmax: number[] = []; // Holds index of IVs that aren't predefined and rolled below 31
+      for (let i = 0; i < 6; i++) {
+        if (pregenData?.partialIvs && !isNullOrUndefined(pregenData.partialIvs[i])) { // Fill specified partialIvs
+          ivs[i] = pregenData.partialIvs[i]!;
+        } else {
+          ivs[i] = randSeedIntRange(minIv, 31);
+          if (ivs[i] === 31) {
+            maxes--;
+          } else {
+            nonmax.push(i);
+          }
+        }
+      }
+      // If we still need to set some IVs to max, set random remaining nonmax IVs to 31, unless there are none
+      while (nonmax.length > 0 && maxes-- > 0) {
+        const i = randSeedItem(nonmax);
+        ivs[i] = 31;
+        nonmax.splice(nonmax.indexOf(i));
+      }
+      this.ivs = ivs;
+    }
+
+    this.aiType = !!dataSource.boss || this.hasTrainer() ? AiType.SMART : AiType.SMART_RANDOM;
   }
 
   initBattleInfo(): void {
@@ -6245,38 +6264,38 @@ export class EnemyPokemon extends Pokemon {
     }
   }
 
-  generateAndPopulateMoveset(formIndex?: number): void {
-    switch (true) {
-      case this.species.speciesId === SpeciesId.SMEARGLE:
+  generateAndPopulateMoveset(pregenData?: PokemonPregenData): void {
+    if (this.species.speciesId === SpeciesId.SMEARGLE) {
+      this.moveset = [
+        new PokemonMove(MoveId.SKETCH),
+        new PokemonMove(MoveId.SKETCH),
+        new PokemonMove(MoveId.SKETCH),
+        new PokemonMove(MoveId.SKETCH),
+      ];
+      return;
+    }
+    if (this.species.speciesId === SpeciesId.ETERNATUS) {
+      if (pregenData?.isPhaseTwo) {
         this.moveset = [
-          new PokemonMove(MoveId.SKETCH),
-          new PokemonMove(MoveId.SKETCH),
-          new PokemonMove(MoveId.SKETCH),
-          new PokemonMove(MoveId.SKETCH),
-        ];
-        break;
-      case this.species.speciesId === SpeciesId.ETERNATUS:
-        this.moveset = (formIndex !== undefined ? formIndex : this.formIndex)
-          ? [
               new PokemonMove(MoveId.DYNAMAX_CANNON),
               new PokemonMove(MoveId.CROSS_POISON),
               new PokemonMove(MoveId.FLAMETHROWER),
               new PokemonMove(MoveId.RECOVER, 0, -4),
-            ]
-          : [
-              new PokemonMove(MoveId.ETERNABEAM),
-              new PokemonMove(MoveId.SLUDGE_BOMB),
-              new PokemonMove(MoveId.FLAMETHROWER),
-              new PokemonMove(MoveId.COSMIC_POWER),
-            ];
-        if (globalScene.gameMode.hasChallenge(Challenges.INVERSE_BATTLE)) {
-          this.moveset[2] = new PokemonMove(MoveId.THUNDERBOLT);
-        }
-        break;
-      default:
-        super.generateAndPopulateMoveset();
-        break;
+        ];
+      } else {
+        this.moveset = [
+          new PokemonMove(MoveId.ETERNABEAM),
+          new PokemonMove(MoveId.SLUDGE_BOMB),
+          new PokemonMove(MoveId.FLAMETHROWER),
+          new PokemonMove(MoveId.COSMIC_POWER),
+        ]
+      }
+      // TODO: Make a ChallengeType for this
+      if (globalScene.gameMode.hasChallenge(Challenges.INVERSE_BATTLE)) {
+        this.moveset[2] = new PokemonMove(MoveId.THUNDERBOLT);
+      }
     }
+    super.generateAndPopulateMoveset(pregenData);
   }
 
   /**
