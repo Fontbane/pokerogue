@@ -3729,6 +3729,16 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     );
     applyMoveAttrs("IgnoreWeatherTypeDebuffAttr", source, this, move, arenaAttackTypeMultiplier);
 
+    // Check if the weather will cancel the move, i.e. in Primal weather
+    if (simulated && !cancelled.value) {
+      cancelled.value = globalScene.arena.isMoveWeatherCancelled(source, move);
+    }
+
+    // Check if the terrain will cancel the move, i.e. in Psychic Terrain
+    if (simulated && !cancelled.value) {
+      cancelled.value = globalScene.arena.isMoveTerrainCancelled(source, [this.getBattlerIndex()], move);
+    }
+
     const isTypeImmune = typeMultiplier * arenaAttackTypeMultiplier.value === 0;
 
     if (cancelled.value || isTypeImmune) {
