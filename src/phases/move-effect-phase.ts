@@ -372,8 +372,8 @@ export class MoveEffectPhase extends PokemonPhase {
       globalScene.phaseManager.appendToPhase(this.queuedPhases, "MoveEndPhase");
     }
     const moveType = user.getMoveType(this.move, true);
-    if (this.move.category !== MoveCategory.STATUS && !user.stellarTypesBoosted.includes(moveType)) {
-      user.stellarTypesBoosted.push(moveType);
+    if (this.move.category !== MoveCategory.STATUS && !user.battleData.stellarTypesBoosted.includes(moveType)) {
+      user.battleData.stellarTypesBoosted.push(moveType);
     }
 
     if (this.lastHit) {

@@ -55,7 +55,6 @@ import {
   CustomPokemonData,
   PokemonBattleData,
   PokemonSummonData,
-  PokemonTempSummonData,
   PokemonTurnData,
   PokemonWaveData,
 } from "#data/pokemon-data";
@@ -242,9 +241,10 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
   public pauseEvolutions: boolean;
   public pokerus: boolean;
   public switchOutStatus = false;
-  public evoCounter: number;
   public teraType: PokemonType;
   public isTerastallized: boolean;
+
+  // Deprecated, kept here for save compatibility until it can be properly migrated
   public stellarTypesBoosted: PokemonType[];
 
   public fusionSpecies: PokemonSpecies | null;
@@ -268,8 +268,6 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
   public battleData: PokemonBattleData = new PokemonBattleData();
   /** Data that resets on switch or battle end (stat stages, battler tags, etc.) */
   public summonData: PokemonSummonData = new PokemonSummonData();
-  /** Similar to {@linkcode PokemonSummonData}, but is reset on reload (not saved to file). */
-  public tempSummonData: PokemonTempSummonData = new PokemonTempSummonData();
   /** Wave data correponding to moves/ability information revealed */
   public waveData: PokemonWaveData = new PokemonWaveData();
   /** Per-turn data like hit count & flinch tracking */
@@ -369,7 +367,6 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       this.customPokemonData = new CustomPokemonData(dataSource.customPokemonData);
       this.teraType = dataSource.teraType;
       this.isTerastallized = dataSource.isTerastallized;
-      this.stellarTypesBoosted = dataSource.stellarTypesBoosted ?? [];
     } else {
       this.id = randSeedInt(4294967296);
       this.ivs = ivs || getIvsFromId(this.id);
@@ -419,7 +416,6 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
 
       this.teraType = randSeedItem(this.getTypes(false, false, true));
       this.isTerastallized = false;
-      this.stellarTypesBoosted = [];
     }
 
     this.summonData = new PokemonSummonData(dataSource?.summonData);
@@ -3662,7 +3658,7 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     if (
       source.isTerastallized &&
       source.getTeraType() === PokemonType.STELLAR &&
-      (!source.stellarTypesBoosted.includes(moveType) || source.hasSpecies(SpeciesId.TERAPAGOS))
+      (!source.battleData.stellarTypesBoosted.includes(moveType) || source.hasSpecies(SpeciesId.TERAPAGOS))
     ) {
       stabMultiplier.value += matchesSourceType ? 0.5 : 0.2;
     }
@@ -5023,7 +5019,7 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
   }
 
   /**
-   * Reset this Pokemon's {@linkcode PokemonSummonData | SummonData} and {@linkcode PokemonTempSummonData | TempSummonData}
+   * Reset this Pokemon's {@linkcode PokemonSummonData | SummonData}
    * in preparation for switching pokemon, as well as removing any relevant on-switch tags.
    */
   resetSummonData(): void {
@@ -5033,7 +5029,8 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       this.updateFusionPalette();
     }
     this.summonData = new PokemonSummonData();
-    this.tempSummonData = new PokemonTempSummonData();
+    this.waveData.turnCount = 1;
+    this.waveData.waveTurnCount = 1;
     this.summonData.illusion = illusion;
     this.updateInfo();
   }
@@ -5060,7 +5057,7 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
   resetTera(): void {
     const wasTerastallized = this.isTerastallized;
     this.isTerastallized = false;
-    this.stellarTypesBoosted = [];
+    this.battleData.stellarTypesBoosted = [];
     if (wasTerastallized) {
       this.updateSpritePipelineData();
       globalScene.triggerPokemonFormChange(this, SpeciesFormChangeLapseTeraTrigger);

@@ -218,8 +218,8 @@ export class SwitchSummonPhase extends SummonPhase {
       lastPokemonIsForceSwitchedAndNotFainted ||
       lastPokemonHasForceSwitchAbAttr
     ) {
-      pokemon.tempSummonData.turnCount--;
-      pokemon.tempSummonData.waveTurnCount--;
+      pokemon.waveData.turnCount--;
+      pokemon.waveData.waveTurnCount--;
     }
 
     if (this.switchType === SwitchType.BATON_PASS && pokemon) {

@@ -112,25 +112,6 @@ export class PokemonSummonData {
   }
 }
 
-// TODO: Merge this inside `summmonData` but exclude from save if/when a save data serializer is added
-export class PokemonTempSummonData {
-  /**
-   * The number of turns this pokemon has spent without switching out.
-   * Only currently used for positioning the battle cursor.
-   */
-  turnCount = 1;
-
-  /**
-   * The number of turns this pokemon has spent in the active position since the start of the wave
-   * without switching out.
-   * Reset on switch and new wave, but not stored in `SummonData` to avoid being written to the save file.
-
-   * Used to evaluate "first turn only" conditions such as
-   * {@linkcode MoveId.FAKE_OUT | Fake Out} and {@linkcode MoveId.FIRST_IMPRESSION | First Impression}).
-   */
-  waveTurnCount = 1;
-}
-
 /**
  * Persistent data for a {@linkcode Pokemon}.
  * Resets at the start of a new battle (but not on switch).
@@ -142,12 +123,14 @@ export class PokemonBattleData {
   public hasEatenBerry = false;
   /** Array containing all berries eaten and not yet recovered during this current battle; used by {@linkcode AbilityId.HARVEST} */
   public berriesEaten: BerryType[] = [];
+  public stellarTypesBoosted: PokemonType[] = [];
 
   constructor(source?: PokemonBattleData | Partial<PokemonBattleData>) {
     if (!isNullOrUndefined(source)) {
       this.hitCount = source.hitCount ?? 0;
       this.hasEatenBerry = source.hasEatenBerry ?? false;
       this.berriesEaten = source.berriesEaten ?? [];
+      this.stellarTypesBoosted = source.stellarTypesBoosted ?? [];
     }
   }
 }
@@ -165,7 +148,21 @@ export class PokemonWaveData {
    */
   public abilitiesApplied: Set<AbilityId> = new Set<AbilityId>();
   /** Whether the pokemon's ability has been revealed or not */
-  public abilityRevealed = false;
+  public abilityRevealed = false; /**
+   * The number of turns this pokemon has spent without switching out.
+   * Only currently used for positioning the battle cursor.
+   */
+  turnCount = 1;
+
+  /**
+   * The number of turns this pokemon has spent in the active position since the start of the wave
+   * without switching out.
+   * Reset on switch and new wave, but not stored in `SummonData` to avoid being written to the save file.
+
+   * Used to evaluate "first turn only" conditions such as
+   * {@linkcode MoveId.FAKE_OUT | Fake Out} and {@linkcode MoveId.FIRST_IMPRESSION | First Impression}).
+   */
+  waveTurnCount = 1;
 }
 
 /**

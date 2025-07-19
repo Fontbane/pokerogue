@@ -48,7 +48,6 @@ export class PokemonData {
   public usedTMs: MoveId[];
   public teraType: PokemonType;
   public isTerastallized: boolean;
-  public stellarTypesBoosted: PokemonType[];
 
   public fusionSpecies: SpeciesId;
   public fusionFormIndex: number;
@@ -72,6 +71,7 @@ export class PokemonData {
 
   // Deprecated attributes, needed for now to allow SessionData migration (see PR#4619 comments)
   // TODO: Remove these once pre-session migration is implemented
+  public stellarTypesBoosted: PokemonType[];
   public natureOverride: Nature | -1;
   public mysteryEncounterPokemonData: CustomPokemonData | null;
   public fusionMysteryEncounterPokemonData: CustomPokemonData | null;
@@ -120,9 +120,9 @@ export class PokemonData {
     this.usedTMs = source.usedTMs ?? [];
     this.teraType = source.teraType as PokemonType;
     this.isTerastallized = !!source.isTerastallized;
-    this.stellarTypesBoosted = source.stellarTypesBoosted ?? [];
 
     // Deprecated, but needed for session data migration
+    this.stellarTypesBoosted = source.stellarTypesBoosted ?? [];
     this.natureOverride = source.natureOverride;
     this.mysteryEncounterPokemonData = source.mysteryEncounterPokemonData
       ? new CustomPokemonData(source.mysteryEncounterPokemonData)
@@ -145,6 +145,10 @@ export class PokemonData {
 
     this.summonData = new PokemonSummonData(source.summonData);
     this.battleData = new PokemonBattleData(source.battleData);
+    if (this.stellarTypesBoosted.length) {
+      this.battleData.stellarTypesBoosted.push(...this.stellarTypesBoosted);
+      this.stellarTypesBoosted = [];
+    }
     this.summonDataSpeciesFormIndex =
       sourcePokemon?.summonData.speciesForm?.formIndex ?? source.summonDataSpeciesFormIndex;
 
