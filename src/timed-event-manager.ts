@@ -8,7 +8,7 @@ import { SpeciesId } from "#enums/species-id";
 import { WeatherType } from "#enums/weather-type";
 import { addTextObject, TextStyle } from "#ui/text";
 import type { nil } from "#utils/common";
-import { isNullOrUndefined } from "#utils/common";
+import { isLocal, isNullOrUndefined } from "#utils/common";
 import i18next from "i18next";
 
 export enum EventType {
@@ -70,7 +70,10 @@ interface TimedEvent extends EventBanner {
   dailyRunChallenges?: EventChallenge[];
 }
 
-const timedEvents: TimedEvent[] = [
+const timedEvents: TimedEvent[] = [];
+
+// Events from past updates, only enabled on local
+const oldEvents: TimedEvent[] = [
   {
     name: "Winter Holiday Update",
     eventType: EventType.SHINY,
@@ -384,6 +387,11 @@ const timedEvents: TimedEvent[] = [
 ];
 
 export class TimedEventManager {
+  constructor() {
+    if (isLocal) {
+      timedEvents.push(...oldEvents);
+    }
+  }
   isActive(event: TimedEvent) {
     return event.startDate < new Date() && new Date() < event.endDate;
   }
@@ -397,8 +405,7 @@ export class TimedEventManager {
   }
 
   activeEventHasBanner(): boolean {
-    const activeEvents = timedEvents.filter(te => this.isActive(te) && te.hasOwnProperty("bannerKey"));
-    return activeEvents.length > 0;
+    return timedEvents.some(te => this.isActive(te) && te.hasOwnProperty("bannerKey"));
   }
 
   getShinyMultiplier(): number {
@@ -416,21 +423,13 @@ export class TimedEventManager {
   }
 
   getEventBannerLangs(): string[] {
-    const ret: string[] = [];
-    ret.push(...timedEvents.find(te => this.isActive(te) && !isNullOrUndefined(te.availableLangs))?.availableLangs!);
-    return ret;
+    return timedEvents.find(te => this.isActive(te) && !isNullOrUndefined(te.availableLangs))?.availableLangs || [];
   }
 
   getEventEncounters(): EventEncounter[] {
-    const ret: EventEncounter[] = [];
-    timedEvents
-      .filter(te => this.isActive(te))
-      .map(te => {
-        if (!isNullOrUndefined(te.eventEncounters)) {
-          ret.push(...te.eventEncounters);
-        }
-      });
-    return ret;
+    return timedEvents
+      .filter(te => this.isActive(te) && !isNullOrUndefined(te.eventEncounters))
+      .flatMap(te => te.eventEncounters!);
   }
 
   /**
@@ -461,15 +460,9 @@ export class TimedEventManager {
    * @returns list of ids of {@linkcode ModifierType}s that Delibirdy hands out as a bonus
    */
   getDelibirdyBuff(): string[] {
-    const ret: string[] = [];
-    timedEvents
-      .filter(te => this.isActive(te))
-      .map(te => {
-        if (!isNullOrUndefined(te.delibirdyBuff)) {
-          ret.push(...te.delibirdyBuff);
-        }
-      });
-    return ret;
+    return timedEvents
+      .filter(te => this.isActive(te) && !isNullOrUndefined(te.delibirdyBuff))
+      .flatMap(te => te.delibirdyBuff!);
   }
 
   /**
@@ -477,15 +470,7 @@ export class TimedEventManager {
    * @returns Event weathers for town
    */
   getWeather(): WeatherPoolEntry[] {
-    const ret: WeatherPoolEntry[] = [];
-    timedEvents
-      .filter(te => this.isActive(te))
-      .map(te => {
-        if (!isNullOrUndefined(te.weather)) {
-          ret.push(...te.weather);
-        }
-      });
-    return ret;
+    return timedEvents.filter(te => this.isActive(te) && !isNullOrUndefined(te.weather)).flatMap(te => te.weather!);
   }
 
   getAllMysteryEncounterChanges(): EventMysteryEncounterTier[] {
@@ -501,34 +486,27 @@ export class TimedEventManager {
   }
 
   getEventMysteryEncountersDisabled(): MysteryEncounterType[] {
-    const ret: MysteryEncounterType[] = [];
-    timedEvents
+    return timedEvents
       .filter(te => this.isActive(te) && !isNullOrUndefined(te.mysteryEncounterTierChanges))
-      .map(te => {
-        te.mysteryEncounterTierChanges?.map(metc => {
-          if (metc.disable) {
-            ret.push(metc.mysteryEncounter);
-          }
-        });
-      });
-    return ret;
+      .flatMap(te =>
+        te.mysteryEncounterTierChanges!.filter(metc => metc.disable).flatMap(metc => metc.mysteryEncounter),
+      );
   }
 
   getMysteryEncounterTierForEvent(
     encounterType: MysteryEncounterType,
     normal: MysteryEncounterTier,
   ): MysteryEncounterTier {
-    let ret = normal;
-    timedEvents
-      .filter(te => this.isActive(te) && !isNullOrUndefined(te.mysteryEncounterTierChanges))
-      .map(te => {
-        te.mysteryEncounterTierChanges?.map(metc => {
-          if (metc.mysteryEncounter === encounterType) {
-            ret = metc.tier ?? normal;
-          }
-        });
-      });
-    return ret;
+    for (const te of timedEvents.filter(
+      te => this.isActive(te) && !isNullOrUndefined(te.mysteryEncounterTierChanges),
+    )) {
+      for (const metc of te.mysteryEncounterTierChanges!) {
+        if (metc.mysteryEncounter === encounterType && !isNullOrUndefined(metc.tier)) {
+          return metc.tier;
+        }
+      }
+    }
+    return normal;
   }
 
   getEventLuckBoost(): number {

@@ -2,20 +2,20 @@ import { pokerogueApi } from "#api/pokerogue-api";
 import { timedEventManager } from "#app/global-event-manager";
 import { globalScene } from "#app/global-scene";
 import { TimedEventDisplay } from "#app/timed-event-manager";
-import { getSplashMessages } from "#data/splash-messages";
+import { getRandomSplashMessage, isGenderSplash, isPokemonSplash, isStatsSplash } from "#data/splash-messages";
 import { PlayerGender } from "#enums/player-gender";
 import type { SpeciesId } from "#enums/species-id";
 import { UiMode } from "#enums/ui-mode";
 import { version } from "#package.json";
 import { OptionSelectUiHandler } from "#ui/option-select-ui-handler";
 import { addTextObject, TextStyle } from "#ui/text";
-import { fixedInt, randInt, randItem } from "#utils/common";
+import { fixedInt, randInt } from "#utils/common";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
 import i18next from "i18next";
 
 export class TitleUiHandler extends OptionSelectUiHandler {
   /** If the stats can not be retrieved, use this fallback value */
-  private static readonly BATTLES_WON_FALLBACK: number = -1;
+  private static readonly TITLE_STATS_FALLBACK: number = -1;
 
   private titleContainer: Phaser.GameObjects.Container;
   private playerCountLabel: Phaser.GameObjects.Text;
@@ -86,13 +86,13 @@ export class TitleUiHandler extends OptionSelectUiHandler {
     this.titleContainer.add(this.appVersionText);
   }
 
-  updateTitleStats(): void {
+  updateTitleStats(updateSplash = false): void {
     pokerogueApi
       .getGameTitleStats()
       .then(stats => {
         if (stats) {
           this.playerCountLabel.setText(`${stats.playerCount} ${i18next.t("menu:playersOnline")}`);
-          if (this.splashMessage === "splashMessages:battlesWon") {
+          if (updateSplash) {
             this.splashMessageText.setText(i18next.t(this.splashMessage, { count: stats.battleCount }));
           }
         }
@@ -102,29 +102,6 @@ export class TitleUiHandler extends OptionSelectUiHandler {
       });
   }
 
-  /** Used solely to display a random Pokémon name in a splash message. */
-  randomPokemon(): void {
-    const rand = randInt(1025, 1);
-    const pokemon = getPokemonSpecies(rand as SpeciesId);
-    if (
-      this.splashMessage === "splashMessages:underratedPokemon" ||
-      this.splashMessage === "splashMessages:dontTalkAboutThePokemonIncident" ||
-      this.splashMessage === "splashMessages:aWildPokemonAppeared" ||
-      this.splashMessage === "splashMessages:aprilFools.removedPokemon"
-    ) {
-      this.splashMessageText.setText(i18next.t(this.splashMessage, { pokemonName: pokemon.name }));
-    }
-  }
-
-  /** Used for a specific April Fools splash message. */
-  genderSplash(): void {
-    if (this.splashMessage === "splashMessages:aprilFools.helloKyleAmber") {
-      globalScene.gameData.gender === PlayerGender.MALE
-        ? this.splashMessageText.setText(i18next.t(this.splashMessage, { name: i18next.t("trainerNames:player_m") }))
-        : this.splashMessageText.setText(i18next.t(this.splashMessage, { name: i18next.t("trainerNames:player_f") }));
-    }
-  }
-
   show(args: any[]): boolean {
     const ret = super.show(args);
 
@@ -132,12 +109,24 @@ export class TitleUiHandler extends OptionSelectUiHandler {
       // Moving player count to top of the menu
       this.playerCountLabel.setY(globalScene.game.canvas.height / 6 - 13 - this.getWindowHeight());
 
-      this.splashMessage = randItem(getSplashMessages());
-      this.splashMessageText.setText(
-        i18next.t(this.splashMessage, {
-          count: TitleUiHandler.BATTLES_WON_FALLBACK,
-        }),
-      );
+      const splashKey = getRandomSplashMessage();
+      console.log(splashKey);
+      this.splashMessage = `splashMessages:${splashKey}`;
+      if (isPokemonSplash(splashKey)) {
+        const rand = randInt(1025, 1);
+        const pokemon = getPokemonSpecies(rand as SpeciesId);
+        this.splashMessageText.setText(i18next.t(this.splashMessage, { pokemonName: pokemon.name }));
+      } else if (isGenderSplash(splashKey)) {
+        globalScene.gameData.gender === PlayerGender.MALE
+          ? this.splashMessageText.setText(i18next.t(this.splashMessage, { name: i18next.t("trainerNames:player_m") }))
+          : this.splashMessageText.setText(i18next.t(this.splashMessage, { name: i18next.t("trainerNames:player_f") }));
+      } else {
+        this.splashMessageText.setText(
+          i18next.t(this.splashMessage, {
+            count: TitleUiHandler.TITLE_STATS_FALLBACK,
+          }),
+        );
+      }
 
       this.appVersionText.setText("v" + version);
 
@@ -148,13 +137,12 @@ export class TitleUiHandler extends OptionSelectUiHandler {
         this.eventDisplay.show();
       }
 
-      this.randomPokemon();
-      this.genderSplash();
+      const splashStats = isStatsSplash(splashKey);
 
-      this.updateTitleStats();
+      this.updateTitleStats(splashStats);
 
       this.titleStatsTimer = setInterval(() => {
-        this.updateTitleStats();
+        this.updateTitleStats(splashStats);
       }, 60000);
 
       globalScene.tweens.add({
