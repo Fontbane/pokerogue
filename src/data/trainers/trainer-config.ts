@@ -993,11 +993,9 @@ export function getRandomPartyMemberFunc(
       );
     }
     return globalScene.addEnemyPokemon(
-      getPokemonSpecies(species),
-      level,
       trainerSlot,
-      undefined,
-      false,
+      level,
+      { species: species, strength: strength },
       undefined,
       postProcess,
     );
@@ -1017,13 +1015,11 @@ function getSpeciesFilterRandomPartyMemberFunc(
 
   return (level: number, strength: PartyMemberStrength) => {
     const waveIndex = globalScene.currentBattle.waveIndex;
-    const species = getPokemonSpecies(
-      globalScene
-        .randomSpecies(waveIndex, level, false, speciesFilter)
-        .getTrainerSpeciesForLevel(level, true, strength, waveIndex),
-    );
+    const species = globalScene
+      .randomSpecies(waveIndex, level, false, speciesFilter)
+      .getTrainerSpeciesForLevel(level, true, strength, waveIndex);
 
-    return globalScene.addEnemyPokemon(species, level, trainerSlot, undefined, false, undefined, postProcess);
+    return globalScene.addEnemyPokemon(trainerSlot, level, { species: species }, undefined, postProcess);
   };
 }
 

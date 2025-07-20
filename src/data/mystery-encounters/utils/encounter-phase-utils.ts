@@ -28,8 +28,7 @@ import { TrainerSlot } from "#enums/trainer-slot";
 import type { TrainerType } from "#enums/trainer-type";
 import { TrainerVariant } from "#enums/trainer-variant";
 import { UiMode } from "#enums/ui-mode";
-import type { PlayerPokemon, Pokemon } from "#field/pokemon";
-import { EnemyPokemon } from "#field/pokemon";
+import type { EnemyPokemon, PlayerPokemon, Pokemon } from "#field/pokemon";
 import { Trainer } from "#field/trainer";
 import type { CustomModifierSettings, ModifierType } from "#modifiers/modifier-type";
 import {
@@ -46,6 +45,7 @@ import type { PokemonData } from "#system/pokemon-data";
 import type { TrainerConfig } from "#trainers/trainer-config";
 import { trainerConfigs } from "#trainers/trainer-config";
 import type { HeldModifierConfig } from "#types/held-modifier-config";
+import type { EnemyPokemonCfg } from "#types/pokemon-pregen-data";
 import type { OptionSelectConfig, OptionSelectItem } from "#ui/abstact-option-select-ui-handler";
 import type { PartyOption, PokemonSelectFilter } from "#ui/party-ui-handler";
 import { PartyUiMode } from "#ui/party-ui-handler";
@@ -179,7 +179,7 @@ export async function initBattleWithEnemyConfig(partyConfig: EnemyPartyConfig): 
         : doubleBattle
           ? 2
           : 1;
-    battle.enemyLevels = new Array(numEnemies).fill(null).map(() => globalScene.currentBattle.getLevelForWave());
+    battle.enemyLevels = new Array(numEnemies).fill(globalScene.currentBattle.getLevelForWave());
   }
 
   globalScene.getEnemyParty().forEach(enemyPokemon => {
@@ -211,11 +211,9 @@ export async function initBattleWithEnemyConfig(partyConfig: EnemyPartyConfig): 
           enemySpecies = config.species;
           isBoss = config.isBoss;
           battle.enemyParty[e] = globalScene.addEnemyPokemon(
-            enemySpecies,
-            level,
             TrainerSlot.TRAINER,
-            isBoss,
-            false,
+            level,
+            { species: enemySpecies.speciesId, boss: isBoss },
             dataSource,
           );
         } else {
@@ -236,11 +234,9 @@ export async function initBattleWithEnemyConfig(partyConfig: EnemyPartyConfig): 
         }
 
         battle.enemyParty[e] = globalScene.addEnemyPokemon(
-          enemySpecies,
+          TrainerSlot.TRAINER,
           level,
-          TrainerSlot.NONE,
-          isBoss,
-          false,
+          { species: enemySpecies.speciesId, boss: isBoss },
           dataSource,
         );
       }
@@ -1005,47 +1001,31 @@ export function handleMysteryEncounterTurnStartEffects(): boolean {
  * @param rerollHidden whether the mon should get an extra roll for Hidden Ability
  * @returns {@linkcode EnemyPokemon} for the requested encounter
  */
-export function getRandomEncounterSpecies(level: number, isBoss = false, rerollHidden = false): EnemyPokemon {
-  let bossSpecies: PokemonSpecies;
-  let isEventEncounter = false;
+export function getRandomEncounterSpecies(level: number, cfg: EnemyPokemonCfg): EnemyPokemon {
   const eventEncounters = timedEventManager.getEventEncounters();
-  let formIndex: number | undefined;
 
   if (eventEncounters.length > 0 && randSeedInt(2) === 1) {
     const eventEncounter = randSeedItem(eventEncounters);
     const levelSpecies = getPokemonSpecies(eventEncounter.species).getWildSpeciesForLevel(
       level,
       !eventEncounter.blockEvolution,
-      isBoss,
+      !!cfg.boss,
       globalScene.gameMode,
     );
-    isEventEncounter = true;
-    bossSpecies = getPokemonSpecies(levelSpecies);
-    formIndex = eventEncounter.formIndex;
+    cfg.formIndex = eventEncounter.formIndex ?? cfg.formIndex;
+    cfg.species = levelSpecies;
+    cfg.shinyRerolls = (cfg.shinyRerolls || 0) + 1;
   } else {
-    bossSpecies = globalScene.arena.randomSpecies(
+    const bossSpecies = globalScene.arena.randomSpecies(
       globalScene.currentBattle.waveIndex,
       level,
       0,
       getPartyLuckValue(globalScene.getPlayerParty()),
-      isBoss,
+      !!cfg.boss,
     );
+    cfg.species = bossSpecies.speciesId;
   }
-  const ret = new EnemyPokemon(bossSpecies, level, TrainerSlot.NONE, isBoss);
-  if (formIndex) {
-    ret.formIndex = formIndex;
-  }
-
-  //Reroll shiny or variant for event encounters
-  if (isEventEncounter) {
-    ret.trySetShinySeed();
-  }
-  //Reroll hidden ability
-  if (rerollHidden && ret.abilityIndex !== 2 && ret.species.abilityHidden) {
-    ret.tryRerollHiddenAbilitySeed();
-  }
-
-  return ret;
+  return globalScene.addEnemyPokemon(TrainerSlot.NONE, level, cfg);
 }
 
 /**

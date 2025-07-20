@@ -8,9 +8,10 @@ import { MysteryEncounterTier } from "#enums/mystery-encounter-tier";
 import { MysteryEncounterType } from "#enums/mystery-encounter-type";
 import { PlayerGender } from "#enums/player-gender";
 import { PokeballType } from "#enums/pokeball";
+import type { SpeciesId } from "#enums/species-id";
 import { TrainerSlot } from "#enums/trainer-slot";
 import type { EnemyPokemon } from "#field/pokemon";
-import { HiddenAbilityRateBoosterModifier, IvScannerModifier } from "#modifiers/modifier";
+import { IvScannerModifier } from "#modifiers/modifier";
 import { getEncounterText, showEncounterText } from "#mystery-encounters/encounter-dialogue-utils";
 import {
   initSubsequentOptionSelect,
@@ -29,7 +30,7 @@ import { MysteryEncounterBuilder } from "#mystery-encounters/mystery-encounter";
 import type { MysteryEncounterOption } from "#mystery-encounters/mystery-encounter-option";
 import { MysteryEncounterOptionBuilder } from "#mystery-encounters/mystery-encounter-option";
 import { MoneyRequirement } from "#mystery-encounters/mystery-encounter-requirements";
-import { NumberHolder, randSeedInt } from "#utils/common";
+import { randSeedInt } from "#utils/common";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
 
 /** the i18n namespace for the encounter */
@@ -278,34 +279,18 @@ async function summonSafariPokemon() {
 
   // Generate pokemon using safariPokemonRemaining so they are always the same pokemon no matter how many turns are taken
   // Safari pokemon roll twice on shiny and HA chances, but are otherwise normal
-  let enemySpecies: PokemonSpecies;
+  let enemySpecies: SpeciesId;
   let pokemon: any;
   globalScene.executeWithSeedOffset(
     () => {
-      enemySpecies = getSafariSpeciesSpawn();
+      enemySpecies = getSafariSpeciesSpawn().speciesId;
       const level = globalScene.currentBattle.getLevelForWave();
-      enemySpecies = getPokemonSpecies(enemySpecies.getWildSpeciesForLevel(level, true, false, globalScene.gameMode));
-      pokemon = globalScene.addEnemyPokemon(enemySpecies, level, TrainerSlot.NONE, false);
-
-      // Roll shiny twice
-      if (!pokemon.shiny) {
-        pokemon.trySetShinySeed();
-      }
-
-      // Roll HA twice
-      if (pokemon.species.abilityHidden) {
-        const hiddenIndex = pokemon.species.ability2 ? 2 : 1;
-        if (pokemon.abilityIndex < hiddenIndex) {
-          const hiddenAbilityChance = new NumberHolder(256);
-          globalScene.applyModifiers(HiddenAbilityRateBoosterModifier, true, hiddenAbilityChance);
-
-          const hasHiddenAbility = !randSeedInt(hiddenAbilityChance.value);
-
-          if (hasHiddenAbility) {
-            pokemon.abilityIndex = hiddenIndex;
-          }
-        }
-      }
+      enemySpecies = getPokemonSpecies(enemySpecies).getWildSpeciesForLevel(level, true, false, globalScene.gameMode);
+      pokemon = globalScene.addEnemyPokemon(TrainerSlot.NONE, level, {
+        species: enemySpecies,
+        shinyRerolls: 1,
+        haRerolls: 2,
+      });
 
       pokemon.calculateStats();
 

@@ -10,7 +10,7 @@ import {
 import type { GameMode } from "#app/game-mode";
 import { getGameMode } from "#app/game-mode";
 import { timedEventManager } from "#app/global-event-manager";
-import { initGlobalScene } from "#app/global-scene";
+import { globalScene, initGlobalScene } from "#app/global-scene";
 import { starterColors } from "#app/global-vars/starter-colors";
 import { InputsController } from "#app/inputs-controller";
 import { LoadingScene } from "#app/loading-scene";
@@ -74,7 +74,7 @@ import { UiTheme } from "#enums/ui-theme";
 import { NewArenaEvent } from "#events/battle-scene";
 import { Arena, ArenaBase } from "#field/arena";
 import { DamageNumberHandler } from "#field/damage-number-handler";
-import type { Pokemon } from "#field/pokemon";
+import type { Pokemon, PokemonParams } from "#field/pokemon";
 import { EnemyPokemon, PlayerPokemon } from "#field/pokemon";
 import { PokemonSpriteSparkleHandler } from "#field/pokemon-sprite-sparkle-handler";
 import { Trainer } from "#field/trainer";
@@ -111,7 +111,6 @@ import { allMysteryEncounters, mysteryEncountersByBiome } from "#mystery-encount
 import type { MovePhase } from "#phases/move-phase";
 import { expSpriteKeys } from "#sprites/sprite-keys";
 import { hasExpSprite } from "#sprites/sprite-utils";
-import type { Variant } from "#sprites/variant";
 import { clearVariantData, variantData } from "#sprites/variant";
 import type { Achv } from "#system/achv";
 import { achvs, ModifierAchv, MoneyAchv } from "#system/achv";
@@ -125,6 +124,7 @@ import { vouchers } from "#system/voucher";
 import { trainerConfigs } from "#trainers/trainer-config";
 import type { HeldModifierConfig } from "#types/held-modifier-config";
 import type { Localizable } from "#types/locales";
+import type { EnemyPokemonCfg, PokemonCfgData, PokemonPregenData } from "#types/pokemon-pregen-data";
 import { AbilityBar } from "#ui/ability-bar";
 import { ArenaFlyout } from "#ui/arena-flyout";
 import { CandyBar } from "#ui/candy-bar";
@@ -151,7 +151,7 @@ import {
 import { deepMergeSpriteData } from "#utils/data";
 import { getEnumValues } from "#utils/enums";
 import { getModifierPoolForType, getModifierType } from "#utils/modifier-utils";
-import { getPokemonSpecies } from "#utils/pokemon-utils";
+import { adjustIvs, getPokemonSpecies } from "#utils/pokemon-utils";
 import i18next from "i18next";
 import Phaser from "phaser";
 import SoundFade from "phaser3-rex-plugins/plugins/soundfade";
@@ -903,30 +903,12 @@ export class BattleScene extends SceneBase {
   }
 
   addPlayerPokemon(
-    species: PokemonSpecies,
-    level: number,
-    abilityIndex?: number,
-    formIndex?: number,
-    gender?: Gender,
-    shiny?: boolean,
-    variant?: Variant,
-    ivs?: number[],
-    nature?: Nature,
+    params: PokemonParams,
     dataSource?: Pokemon | PokemonData,
+    pregenData?: PokemonPregenData,
     postProcess?: (playerPokemon: PlayerPokemon) => void,
   ): PlayerPokemon {
-    const pokemon = new PlayerPokemon(
-      species,
-      level,
-      abilityIndex,
-      formIndex,
-      gender,
-      shiny,
-      variant,
-      ivs,
-      nature,
-      dataSource,
-    );
+    const pokemon = new PlayerPokemon(dataSource ?? params, pregenData);
 
     if (postProcess) {
       postProcess(pokemon);
@@ -958,14 +940,14 @@ export class BattleScene extends SceneBase {
   }
 
   addEnemyPokemon(
-    species: PokemonSpecies,
-    level: number,
     trainerSlot: TrainerSlot,
-    boss = false,
-    shinyLock = false,
+    level: number,
+    cfg: EnemyPokemonCfg,
     dataSource?: PokemonData,
     postProcess?: (enemyPokemon: EnemyPokemon) => void,
   ): EnemyPokemon {
+    let species = getPokemonSpecies(cfg.species);
+    let boss = !!cfg.boss;
     if (Overrides.OPP_LEVEL_OVERRIDE > 0) {
       level = Overrides.OPP_LEVEL_OVERRIDE;
     }
@@ -975,13 +957,19 @@ export class BattleScene extends SceneBase {
       boss = this.getEncounterBossSegments(this.currentBattle.waveIndex, level, species) > 1;
     }
 
-    const pokemon = new EnemyPokemon(species, level, trainerSlot, boss, shinyLock, dataSource);
+    const pdata = cfg as PokemonCfgData as Partial<PokemonData>;
+    pdata.level = level;
+    const params = pdata as PokemonParams;
+    const pregenData = cfg as PokemonPregenData;
+
+    const pokemon = new EnemyPokemon(trainerSlot, dataSource ?? params, pregenData);
     if (Overrides.OPP_FUSION_OVERRIDE) {
       pokemon.generateFusionSpecies();
     }
 
     if (boss && !dataSource) {
       const secondaryIvs = getIvsFromId(randSeedInt(4294967296));
+      adjustIvs(secondaryIvs, globalScene.currentBattle.waveIndex, pregenData);
 
       for (let s = 0; s < pokemon.ivs.length; s++) {
         pokemon.ivs[s] = Math.round(
@@ -997,21 +985,21 @@ export class BattleScene extends SceneBase {
       postProcess(pokemon);
     }
 
-    if (Overrides.ENEMY_IVS_OVERRIDE === null) {
-      // do nothing
-    } else if (Array.isArray(Overrides.ENEMY_IVS_OVERRIDE)) {
-      if (Overrides.ENEMY_IVS_OVERRIDE.length !== 6) {
-        throw new Error("The Enemy IVs override must be an array of length 6 or a number!");
+    if (Overrides.ENEMY_IVS_OVERRIDE !== null) {
+      if (Array.isArray(Overrides.ENEMY_IVS_OVERRIDE)) {
+        if (Overrides.ENEMY_IVS_OVERRIDE.length !== 6) {
+          throw new Error("The Enemy IVs override must be an array of length 6 or a number!");
+        }
+        if (Overrides.ENEMY_IVS_OVERRIDE.some(value => !isBetween(value, 0, 31))) {
+          throw new Error("All IVs in the enemy IV override must be between 0 and 31!");
+        }
+        pokemon.ivs = Overrides.ENEMY_IVS_OVERRIDE;
+      } else {
+        if (!isBetween(Overrides.ENEMY_IVS_OVERRIDE, 0, 31)) {
+          throw new Error("The Enemy IV override must be a value between 0 and 31!");
+        }
+        pokemon.ivs = new Array(6).fill(Overrides.ENEMY_IVS_OVERRIDE);
       }
-      if (Overrides.ENEMY_IVS_OVERRIDE.some(value => !isBetween(value, 0, 31))) {
-        throw new Error("All IVs in the enemy IV override must be between 0 and 31!");
-      }
-      pokemon.ivs = Overrides.ENEMY_IVS_OVERRIDE;
-    } else {
-      if (!isBetween(Overrides.ENEMY_IVS_OVERRIDE, 0, 31)) {
-        throw new Error("The Enemy IV override must be a value between 0 and 31!");
-      }
-      pokemon.ivs = new Array(6).fill(Overrides.ENEMY_IVS_OVERRIDE);
     }
 
     if (Overrides.ENEMY_NATURE_OVERRIDE !== null) {
@@ -3369,7 +3357,7 @@ export class BattleScene extends SceneBase {
           ) as TurnHeldItemTransferModifier;
           finalBossMBH.setTransferrableFalse();
           this.addEnemyModifier(finalBossMBH, false, true);
-          pokemon.generateAndPopulateMoveset({isPhaseTwo: true});
+          pokemon.generateAndPopulateMoveset({ isPhaseTwo: true });
           this.setFieldScale(0.75);
           this.triggerPokemonFormChange(pokemon, SpeciesFormChangeManualTrigger, false);
           this.currentBattle.double = true;

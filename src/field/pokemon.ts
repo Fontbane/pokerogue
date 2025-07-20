@@ -1,5 +1,6 @@
 import type { Ability, PreAttackModifyDamageAbAttrParams } from "#abilities/ability";
 import { applyAbAttrs, applyOnGainAbAttrs, applyOnLoseAbAttrs } from "#abilities/apply-ab-attrs";
+import type { PokemonPregenData } from "#app/@types/pokemon-pregen-data";
 import type { AnySound, BattleScene } from "#app/battle-scene";
 import { PLAYER_PARTY_MAX_SIZE } from "#app/constants";
 import { timedEventManager } from "#app/global-event-manager";
@@ -169,12 +170,11 @@ import {
   toDmgValue,
 } from "#utils/common";
 import { getEnumValues } from "#utils/enums";
-import { getPokemonSpecies } from "#utils/pokemon-utils";
+import { adjustIvs, getPokemonSpecies } from "#utils/pokemon-utils";
 import { argbFromRgba, QuantizerCelebi, rgbaFromArgb } from "@material/material-color-utilities";
 import i18next from "i18next";
 import Phaser from "phaser";
 import SoundFade from "phaser3-rex-plugins/plugins/soundfade";
-import { PokemonPregenData } from "#app/@types/pokemon-pregen-data";
 
 /** Base typeclass for damage parameter methods, used for DRY */
 type damageParams = {
@@ -204,9 +204,9 @@ type damageParams = {
  * Type for the main parameters of {@linkcode Pokemon} constructor. Contains:
  * - Partial {@linkcode PokemonData} object
  * - Required level
- * - Required species, which can be a SpeciesId or PokemonSpecies unlike in PokemonData
+ * - Required species
  * */
-export type PokemonParams = Partial<Omit<PokemonData, "species">> & Pick<PokemonData, "level"> & {species: SpeciesId | PokemonSpecies};
+export type PokemonParams = Partial<PokemonData> & Pick<PokemonData, "species" | "level">;
 
 /** Type for the parameters of {@linkcode Pokemon#getBaseDamage | getBaseDamage} */
 type getBaseDamageParams = Omit<damageParams, "effectiveness">;
@@ -297,17 +297,11 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
   private shinySparkle: Phaser.GameObjects.Sprite;
 
   // TODO: Rework this eventually
-  constructor(
-    x: number,
-    y: number,
-    dataSource: Pokemon | PokemonData | PokemonParams,
-    pregenData?: PokemonPregenData,
-  ) {
+  constructor(x: number, y: number, dataSource: Pokemon | PokemonData | PokemonParams, pregenData?: PokemonPregenData) {
     super(globalScene, x, y);
 
-    const fullData = dataSource instanceof Pokemon || dataSource instanceof PokemonData;
-
-    this.species = dataSource.species instanceof PokemonSpecies ? dataSource.species : getPokemonSpecies(dataSource.species);
+    this.species =
+      dataSource.species instanceof PokemonSpecies ? dataSource.species : getPokemonSpecies(dataSource.species);
 
     if (!isNullOrUndefined(dataSource.id)) {
       this.id = dataSource.id;
@@ -321,7 +315,8 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       this.generateGender();
     }
     this.abilityIndex = dataSource.abilityIndex ?? this.generateAbilityIndex();
-    this.formIndex = dataSource.formIndex ?? globalScene.getSpeciesFormIndex(this.species, this.gender, this.nature, this.isPlayer());
+    this.formIndex =
+      dataSource.formIndex ?? globalScene.getSpeciesFormIndex(this.species, this.gender, this.nature, this.isPlayer());
     if (!isNullOrUndefined(dataSource.nature)) {
       this.nature = dataSource.nature;
     }
@@ -364,14 +359,12 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     this.status = dataSource.status || null;
     this.friendship = dataSource.friendship ?? this.species.baseFriendship;
     this.metLevel = dataSource.metLevel || 5;
-    this.metBiome = dataSource.metBiome ?? globalScene.currentBattle ? globalScene.arena.biomeType : -1;
+    this.metBiome = (dataSource.metBiome ?? globalScene.currentBattle) ? globalScene.arena.biomeType : -1;
     this.metSpecies =
       dataSource.metSpecies ?? (this.metBiome !== -1 ? this.species.speciesId : this.species.getRootSpeciesId(true));
     this.metWave =
       dataSource.metWave ??
-        (this.metBiome === -1 ?
-          -1 : globalScene.currentBattle ?
-          globalScene.currentBattle.waveIndex : 0);
+      (this.metBiome === -1 ? -1 : globalScene.currentBattle ? globalScene.currentBattle.waveIndex : 0);
     this.pauseEvolutions = !!dataSource.pauseEvolutions;
     this.pokerus = !!dataSource.pokerus;
     this.luck = this.shiny ? this.variant + 1 : 0;
@@ -399,7 +392,9 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       this.fusionAbilityIndex = dataSource.fusionAbilityIndex!;
       this.fusionShiny = dataSource.fusionShiny!;
       this.fusionGender = dataSource.fusionGender!;
-      this.fusionCustomPokemonData = dataSource.fusionCustomPokemonData ? new CustomPokemonData(dataSource.fusionCustomPokemonData) : null;
+      this.fusionCustomPokemonData = dataSource.fusionCustomPokemonData
+        ? new CustomPokemonData(dataSource.fusionCustomPokemonData)
+        : null;
       this.fusionTeraType = dataSource.fusionTeraType!;
       this.fusionVariant = dataSource.fusionVariant || 0;
       this.luck += this.fusionShiny ? this.fusionVariant + 1 : 0;
@@ -434,6 +429,22 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     if (!dataSource) {
       this.calculateStats();
     }
+  }
+
+  getParams(alteration: Partial<PokemonData> = {}): PokemonParams {
+    const ret: PokemonParams = {
+      species: this.species.speciesId,
+      level: this.level,
+      abilityIndex: this.abilityIndex,
+      formIndex: this.formIndex,
+      gender: this.gender,
+      shiny: this.shiny,
+      variant: this.variant,
+      ivs: this.ivs,
+      nature: this.nature,
+    };
+    Object.assign(ret, alteration);
+    return ret;
   }
 
   /**
@@ -3192,7 +3203,10 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     const statRatio = worseCategory === MoveCategory.PHYSICAL ? atk / spAtk : spAtk / atk;
     movePool = movePool.map(m => [
       m[0],
-      m[1] * (allMoves[m[0]].category === worseCategory && !(teraMon && m[0] === MoveId.TERA_BLAST) ? Math.min(Math.pow(statRatio, 3) * 1.3, 1) : 1),
+      m[1] *
+        (allMoves[m[0]].category === worseCategory && !(teraMon && m[0] === MoveId.TERA_BLAST)
+          ? Math.min(Math.pow(statRatio, 3) * 1.3, 1)
+          : 1),
     ]);
 
     /** The higher this is the more the game weights towards higher level moves. At `0` all moves are equal weight. */
@@ -3205,12 +3219,14 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       Math.ceil(Math.pow(m[1], weightMultiplier) * 100),
     ]);
 
-    if (!this.moveset.some(mp => mp.getMove().category !== MoveCategory.STATUS && stabTypes.includes(mp.getMove().type))) {
+    if (
+      !this.moveset.some(mp => mp.getMove().category !== MoveCategory.STATUS && stabTypes.includes(mp.getMove().type))
+    ) {
       // All Pokemon force a STAB move first, unless they already have one
       const stabMovePool = baseWeights.filter(
-        m => allMoves[m[0]].category !== MoveCategory.STATUS &&
-          (stabTypes.includes(allMoves[m[0]].type) ||
-          m[0] === MoveId.TERA_BLAST && teraMon),
+        m =>
+          allMoves[m[0]].category !== MoveCategory.STATUS &&
+          (stabTypes.includes(allMoves[m[0]].type) || (m[0] === MoveId.TERA_BLAST && teraMon)),
       );
 
       if (stabMovePool.length) {
@@ -5652,10 +5668,7 @@ export class PlayerPokemon extends Pokemon {
   protected battleInfo: PlayerBattleInfo;
   public compatibleTms: MoveId[];
 
-  constructor(
-    dataSource: Pokemon | PokemonData,
-    pregenData?: PokemonPregenData,
-  ) {
+  constructor(dataSource: Pokemon | PokemonData | PokemonParams, pregenData?: PokemonPregenData) {
     super(106, 148, dataSource, pregenData);
 
     if (Overrides.STATUS_OVERRIDE) {
@@ -5847,18 +5860,7 @@ export class PlayerPokemon extends Pokemon {
                 0,
               )
             : this.fusionFormIndex;
-        ret = globalScene.addPlayerPokemon(
-          this.species,
-          this.level,
-          this.abilityIndex,
-          this.formIndex,
-          this.gender,
-          this.shiny,
-          this.variant,
-          this.ivs,
-          this.nature,
-          this,
-        );
+        ret = globalScene.addPlayerPokemon(this.getParams(), this);
         this.fusionSpecies = originalFusionSpecies;
         this.fusionFormIndex = originalFusionFormIndex;
       } else {
@@ -5870,15 +5872,7 @@ export class PlayerPokemon extends Pokemon {
               )
             : this.formIndex;
         ret = globalScene.addPlayerPokemon(
-          !isFusion ? evolutionSpecies : this.species,
-          this.level,
-          this.abilityIndex,
-          formIndex,
-          this.gender,
-          this.shiny,
-          this.variant,
-          this.ivs,
-          this.nature,
+          this.getParams({ species: evolution.speciesId, formIndex: formIndex }),
           this,
         );
       }
@@ -5974,26 +5968,26 @@ export class PlayerPokemon extends Pokemon {
       const newEvolution = pokemonEvolutions[evoSpecies.speciesId][1];
 
       if (validateShedinjaEvo()) {
-        const newPokemon = globalScene.addPlayerPokemon(
-          this.species,
-          this.level,
-          this.abilityIndex,
-          this.formIndex,
-          undefined,
-          this.shiny,
-          this.variant,
-          this.ivs,
-          this.nature,
-        );
-        newPokemon.passive = this.passive;
-        newPokemon.moveset = this.moveset.slice();
+        const newPokemon = globalScene.addPlayerPokemon({
+          species: this.species.speciesId,
+          level: this.level,
+          abilityIndex: this.abilityIndex,
+          formIndex: this.formIndex,
+          shiny: this.shiny,
+          variant: this.variant,
+          ivs: this.ivs,
+          nature: this.nature,
+          passive: this.passive,
+          moveset: this.moveset.slice(),
+          luck: this.luck,
+          gender: Gender.GENDERLESS,
+          metLevel: this.metLevel,
+          metBiome: this.metBiome,
+          metSpecies: this.metSpecies,
+          metWave: this.metWave,
+          usedTMs: this.usedTMs,
+        });
         newPokemon.moveset = this.copyMoveset();
-        newPokemon.luck = this.luck;
-        newPokemon.gender = Gender.GENDERLESS;
-        newPokemon.metLevel = this.metLevel;
-        newPokemon.metBiome = this.metBiome;
-        newPokemon.metSpecies = this.metSpecies;
-        newPokemon.metWave = this.metWave;
         newPokemon.fusionSpecies = this.fusionSpecies;
         newPokemon.fusionFormIndex = this.fusionFormIndex;
         newPokemon.fusionAbilityIndex = this.fusionAbilityIndex;
@@ -6002,7 +5996,6 @@ export class PlayerPokemon extends Pokemon {
         newPokemon.fusionGender = this.fusionGender;
         newPokemon.fusionLuck = this.fusionLuck;
         newPokemon.fusionTeraType = this.fusionTeraType;
-        newPokemon.usedTMs = this.usedTMs;
 
         globalScene.getPlayerParty().push(newPokemon);
         newPokemon.evolve(!isFusion ? newEvolution : new FusionSpeciesFormEvolution(this.id, newEvolution), evoSpecies);
@@ -6026,18 +6019,8 @@ export class PlayerPokemon extends Pokemon {
         this.species.forms.findIndex(f => f.formKey === formChange.formKey),
         0,
       );
-      const ret = globalScene.addPlayerPokemon(
-        this.species,
-        this.level,
-        this.abilityIndex,
-        formIndex,
-        this.gender,
-        this.shiny,
-        this.variant,
-        this.ivs,
-        this.nature,
-        this,
-      );
+      const params = this.getParams({ formIndex: formIndex });
+      const ret = globalScene.addPlayerPokemon(params, this);
       ret.loadAssets().then(() => resolve(ret));
     });
   }
@@ -6176,17 +6159,8 @@ export class EnemyPokemon extends Pokemon {
   /** To indicate if the instance was populated with a dataSource -> e.g. loaded & populated from session data */
   public readonly isPopulatedFromDataSource: boolean;
 
-  constructor(
-    trainerSlot: TrainerSlot,
-    dataSource: PokemonData | PokemonParams,
-    pregenData?: PokemonPregenData,
-  ) {
-    super(
-      236,
-      84,
-      dataSource,
-      pregenData
-    );
+  constructor(trainerSlot: TrainerSlot, dataSource: PokemonData | PokemonParams, pregenData?: PokemonPregenData) {
+    super(236, 84, dataSource, pregenData);
 
     this.trainerSlot = trainerSlot;
     this.initialTeamIndex = globalScene.currentBattle?.enemyParty.length ?? 0;
@@ -6234,29 +6208,8 @@ export class EnemyPokemon extends Pokemon {
 
     // Generate IVs, using preferences configured in pregen
     if (this.hasTrainer() && globalScene.currentBattle && !dataSource.ivs) {
-      const ivs: number[] = [-1, -1, -1, -1, -1, -1];
-      const minIv = pregenData?.minIv ?? Math.floor(globalScene.currentBattle.waveIndex / 10);
-      let maxes = pregenData?.guaranteedMaxIvs ?? 0;
-      const nonmax: number[] = []; // Holds index of IVs that aren't predefined and rolled below 31
-      for (let i = 0; i < 6; i++) {
-        if (pregenData?.partialIvs && !isNullOrUndefined(pregenData.partialIvs[i])) { // Fill specified partialIvs
-          ivs[i] = pregenData.partialIvs[i]!;
-        } else {
-          ivs[i] = randSeedIntRange(minIv, 31);
-          if (ivs[i] === 31) {
-            maxes--;
-          } else {
-            nonmax.push(i);
-          }
-        }
-      }
-      // If we still need to set some IVs to max, set random remaining nonmax IVs to 31, unless there are none
-      while (nonmax.length > 0 && maxes-- > 0) {
-        const i = randSeedItem(nonmax);
-        ivs[i] = 31;
-        nonmax.splice(nonmax.indexOf(i));
-      }
-      this.ivs = ivs;
+      const ivs: number[] = [0, 0, 0, 0, 0, 0];
+      this.ivs = adjustIvs(ivs, globalScene.currentBattle.waveIndex, pregenData);
     }
 
     this.aiType = !!dataSource.boss || this.hasTrainer() ? AiType.SMART : AiType.SMART_RANDOM;
@@ -6304,10 +6257,10 @@ export class EnemyPokemon extends Pokemon {
     if (this.species.speciesId === SpeciesId.ETERNATUS) {
       if (pregenData?.isPhaseTwo) {
         this.moveset = [
-              new PokemonMove(MoveId.DYNAMAX_CANNON),
-              new PokemonMove(MoveId.CROSS_POISON),
-              new PokemonMove(MoveId.FLAMETHROWER),
-              new PokemonMove(MoveId.RECOVER, 0, -4),
+          new PokemonMove(MoveId.DYNAMAX_CANNON),
+          new PokemonMove(MoveId.CROSS_POISON),
+          new PokemonMove(MoveId.FLAMETHROWER),
+          new PokemonMove(MoveId.RECOVER, 0, -4),
         ];
       } else {
         this.moveset = [
@@ -6315,7 +6268,7 @@ export class EnemyPokemon extends Pokemon {
           new PokemonMove(MoveId.SLUDGE_BOMB),
           new PokemonMove(MoveId.FLAMETHROWER),
           new PokemonMove(MoveId.COSMIC_POWER),
-        ]
+        ];
       }
       // TODO: Make a ChallengeType for this
       if (globalScene.gameMode.hasChallenge(Challenges.INVERSE_BATTLE)) {
@@ -6825,18 +6778,7 @@ export class EnemyPokemon extends Pokemon {
       this.metBiome = globalScene.arena.biomeType;
       this.metWave = globalScene.currentBattle.waveIndex;
       this.metSpecies = this.species.speciesId;
-      const newPokemon = globalScene.addPlayerPokemon(
-        this.species,
-        this.level,
-        this.abilityIndex,
-        this.formIndex,
-        this.gender,
-        this.shiny,
-        this.variant,
-        this.ivs,
-        this.nature,
-        this,
-      );
+      const newPokemon = globalScene.addPlayerPokemon(this.getParams(), this);
 
       if (isBetween(slotIndex, 0, PLAYER_PARTY_MAX_SIZE - 1)) {
         party.splice(slotIndex, 0, newPokemon);

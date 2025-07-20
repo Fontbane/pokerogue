@@ -11,7 +11,7 @@ import { PokeballType } from "#enums/pokeball";
 import type { PokemonType } from "#enums/pokemon-type";
 import type { SpeciesId } from "#enums/species-id";
 import { TrainerSlot } from "#enums/trainer-slot";
-import { EnemyPokemon, Pokemon } from "#field/pokemon";
+import { EnemyPokemon, Pokemon, type PokemonParams } from "#field/pokemon";
 import { PokemonMove } from "#moves/pokemon-move";
 import type { Variant } from "#sprites/variant";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
@@ -152,38 +152,32 @@ export class PokemonData {
     this.fusionCustomPokemonData = new CustomPokemonData(source.fusionCustomPokemonData);
   }
 
+  getParams(alteration: Partial<PokemonData> = {}): PokemonParams {
+    const ret: PokemonParams = {
+      species: this.species,
+      level: this.level,
+      abilityIndex: this.abilityIndex,
+      formIndex: this.formIndex,
+      gender: this.gender,
+      shiny: this.shiny,
+      variant: this.variant,
+      ivs: this.ivs,
+      nature: this.nature,
+    };
+    Object.assign(ret, alteration);
+    return ret;
+  }
+
   toPokemon(battleType?: BattleType, partyMemberIndex = 0, double = false): Pokemon {
-    const species = getPokemonSpecies(this.species);
+    const trainerSlot =
+      battleType === BattleType.TRAINER
+        ? !double || !(partyMemberIndex % 2)
+          ? TrainerSlot.TRAINER
+          : TrainerSlot.TRAINER_PARTNER
+        : TrainerSlot.NONE;
     const ret: Pokemon = this.player
-      ? globalScene.addPlayerPokemon(
-          species,
-          this.level,
-          this.abilityIndex,
-          this.formIndex,
-          this.gender,
-          this.shiny,
-          this.variant,
-          this.ivs,
-          this.nature,
-          this,
-          playerPokemon => {
-            if (this.nickname) {
-              playerPokemon.nickname = this.nickname;
-            }
-          },
-        )
-      : globalScene.addEnemyPokemon(
-          species,
-          this.level,
-          battleType === BattleType.TRAINER
-            ? !double || !(partyMemberIndex % 2)
-              ? TrainerSlot.TRAINER
-              : TrainerSlot.TRAINER_PARTNER
-            : TrainerSlot.NONE,
-          this.boss,
-          false,
-          this,
-        );
+      ? globalScene.addPlayerPokemon(this.getParams(), this)
+      : globalScene.addEnemyPokemon(trainerSlot, this.level, { species: this.species }, this);
 
     // when loading from saved session, recover summonData.speciesFrom and form index species object
     // used to stay transformed on reload session
