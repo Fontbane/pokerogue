@@ -1,6 +1,5 @@
 import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
-import { speciesStarterCosts } from "#balance/starters";
 import { modifierTypes } from "#data/data-lists";
 import { Gender } from "#data/gender";
 import {
@@ -15,7 +14,6 @@ import { getStatusEffectCatchRateMultiplier } from "#data/status-effect";
 import type { AbilityId } from "#enums/ability-id";
 import { PlayerGender } from "#enums/player-gender";
 import type { PokeballType } from "#enums/pokeball";
-import type { PokemonType } from "#enums/pokemon-type";
 import { SpeciesId } from "#enums/species-id";
 import type { PermanentStat } from "#enums/stat";
 import { StatusEffect } from "#enums/status-effect";
@@ -33,7 +31,7 @@ import { achvs } from "#system/achv";
 import type { PartyOption } from "#ui/party-ui-handler";
 import { PartyUiMode } from "#ui/party-ui-handler";
 import { SummaryUiMode } from "#ui/summary-ui-handler";
-import { isNullOrUndefined, randSeedInt } from "#utils/common";
+import { randSeedInt } from "#utils/common";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
 import i18next from "i18next";
 
@@ -234,69 +232,6 @@ export function getHighestStatTotalPlayerPokemon(isAllowed = false, isFainted = 
   }
 
   return pokemon!;
-}
-
-/**
- *
- * NOTE: This returns ANY random species, including those locked behind eggs, etc.
- * @param starterTiers
- * @param excludedSpecies
- * @param types
- * @param allowSubLegendary
- * @param allowLegendary
- * @param allowMythical
- * @returns
- */
-export function getRandomSpeciesByStarterCost(
-  starterTiers: number | [number, number],
-  excludedSpecies?: SpeciesId[],
-  types?: PokemonType[],
-  allowSubLegendary = true,
-  allowLegendary = true,
-  allowMythical = true,
-): SpeciesId {
-  let min = Array.isArray(starterTiers) ? starterTiers[0] : starterTiers;
-  let max = Array.isArray(starterTiers) ? starterTiers[1] : starterTiers;
-
-  let filteredSpecies: [PokemonSpecies, number][] = Object.keys(speciesStarterCosts)
-    .map(s => [Number.parseInt(s) as SpeciesId, speciesStarterCosts[s] as number])
-    .filter(s => {
-      const pokemonSpecies = getPokemonSpecies(s[0]);
-      return (
-        pokemonSpecies &&
-        (!excludedSpecies || !excludedSpecies.includes(s[0])) &&
-        (allowSubLegendary || !pokemonSpecies.subLegendary) &&
-        (allowLegendary || !pokemonSpecies.legendary) &&
-        (allowMythical || !pokemonSpecies.mythical)
-      );
-    })
-    .map(s => [getPokemonSpecies(s[0]), s[1]]);
-
-  if (types && types.length > 0) {
-    filteredSpecies = filteredSpecies.filter(
-      s => types.includes(s[0].type1) || (!isNullOrUndefined(s[0].type2) && types.includes(s[0].type2)),
-    );
-  }
-
-  // If no filtered mons exist at specified starter tiers, will expand starter search range until there are
-  // Starts by decrementing starter tier min until it is 0, then increments tier max up to 10
-  let tryFilterStarterTiers: [PokemonSpecies, number][] = filteredSpecies.filter(s => s[1] >= min && s[1] <= max);
-  while (tryFilterStarterTiers.length === 0 && !(min === 0 && max === 10)) {
-    if (min > 0) {
-      min--;
-    } else {
-      max++;
-    }
-
-    tryFilterStarterTiers = filteredSpecies.filter(s => s[1] >= min && s[1] <= max);
-  }
-
-  if (tryFilterStarterTiers.length > 0) {
-    const index = randSeedInt(tryFilterStarterTiers.length);
-    return Phaser.Math.RND.shuffle(tryFilterStarterTiers)[index][0].speciesId;
-  }
-
-  return SpeciesId.BULBASAUR;
 }
 
 /**

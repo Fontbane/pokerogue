@@ -1,5 +1,4 @@
 import { CLASSIC_MODE_MYSTERY_ENCOUNTER_WAVES } from "#app/constants";
-import { timedEventManager } from "#app/global-event-manager";
 import { globalScene } from "#app/global-scene";
 import { NON_LEGEND_PARADOX_POKEMON, NON_LEGEND_ULTRA_BEASTS } from "#balance/special-species-groups";
 import { speciesStarterCosts } from "#balance/starters";
@@ -14,15 +13,13 @@ import type { EnemyPokemon } from "#field/pokemon";
 import { PlayerPokemon } from "#field/pokemon";
 import { showEncounterDialogue } from "#mystery-encounters/encounter-dialogue-utils";
 import {
+  getRandomSpeciesByStarterCost,
+  getValidEventEncounters,
   leaveEncounterWithoutBattle,
   transitionMysteryEncounterIntroVisuals,
   updatePlayerMoney,
 } from "#mystery-encounters/encounter-phase-utils";
-import {
-  catchPokemon,
-  getRandomSpeciesByStarterCost,
-  getSpriteKeysFromPokemon,
-} from "#mystery-encounters/encounter-pokemon-utils";
+import { catchPokemon, getSpriteKeysFromPokemon } from "#mystery-encounters/encounter-pokemon-utils";
 import type { MysteryEncounter } from "#mystery-encounters/mystery-encounter";
 import { MysteryEncounterBuilder } from "#mystery-encounters/mystery-encounter";
 import { MysteryEncounterOptionBuilder } from "#mystery-encounters/mystery-encounter-option";
@@ -88,22 +85,24 @@ export const ThePokemonSalesmanEncounter: MysteryEncounter = MysteryEncounterBui
 
     const r = randSeedInt(SHINY_MAGIKARP_WEIGHT);
 
-    const validEventEncounters = timedEventManager
-      .getEventEncounters()
-      .filter(
-        s =>
-          !getPokemonSpecies(s.species).legendary &&
-          !getPokemonSpecies(s.species).subLegendary &&
-          !getPokemonSpecies(s.species).mythical &&
-          !NON_LEGEND_PARADOX_POKEMON.includes(s.species) &&
-          !NON_LEGEND_ULTRA_BEASTS.includes(s.species),
+    const eventFilter = (spe: SpeciesId) => {
+      const p = getPokemonSpecies(spe);
+      return (
+        !p.legendary &&
+        !p.subLegendary &&
+        !p.mythical &&
+        !NON_LEGEND_PARADOX_POKEMON.includes(spe) &&
+        !NON_LEGEND_ULTRA_BEASTS.includes(spe)
       );
+    };
+
+    let validEventEncounters = getValidEventEncounters(eventFilter);
 
     let pokemon: PlayerPokemon;
     /**
      * Mon is determined as follows:
      * If you roll the 1% for Shiny Magikarp, you get Magikarp with a random variant
-     * If an event with more than 1 valid event encounter species is active, you have 20% chance to get one of those
+     * If an event with more than 1 valid event encounter species is active, you have 50% chance to get one of those
      * If the rolled species has no HA, and there are valid event encounters, you will get one of those
      * If the rolled species has no HA and there are no valid event encounters, you will get Shiny Magikarp
      * Mons rolled from the event encounter pool get 3 extra shiny rolls
@@ -116,13 +115,10 @@ export const ThePokemonSalesmanEncounter: MysteryEncounter = MysteryEncounterBui
       // If you roll 1%, give shiny Magikarp with random variant
       species = getPokemonSpecies(SpeciesId.MAGIKARP);
       pokemon = new PlayerPokemon(species, 5, 2, undefined, undefined, true);
-    } else if (
-      validEventEncounters.length > 0 &&
-      (r <= EVENT_THRESHOLD || isNullOrUndefined(species.abilityHidden) || species.abilityHidden === AbilityId.NONE)
-    ) {
+    } else if (validEventEncounters.length > 0 && (r <= EVENT_THRESHOLD || !species.abilityHidden)) {
       tries = 0;
       do {
-        // If you roll 20%, give event encounter with 3 extra shiny rolls and its HA, if it has one
+        // If you roll 50%, give event encounter with 3 extra shiny rolls and its HA, if it has one
         const enc = randSeedItem(validEventEncounters);
         species = getPokemonSpecies(enc.species);
         pokemon = new PlayerPokemon(
@@ -141,8 +137,8 @@ export const ThePokemonSalesmanEncounter: MysteryEncounter = MysteryEncounterBui
       } while (tries < 6);
       if (!pokemon.shiny && pokemon.abilityIndex !== 2) {
         // If, after 6 tries, you STILL somehow don't have an HA or shiny mon, pick from only the event mons that have an HA.
-        if (validEventEncounters.some(s => !!getPokemonSpecies(s.species).abilityHidden)) {
-          validEventEncounters.filter(s => !!getPokemonSpecies(s.species).abilityHidden);
+        validEventEncounters = validEventEncounters.filter(s => getPokemonSpecies(s.species).abilityHidden);
+        if (validEventEncounters.length) {
           const enc = randSeedItem(validEventEncounters);
           species = getPokemonSpecies(enc.species);
           pokemon = new PlayerPokemon(species, 5, 2, enc.formIndex);
@@ -249,7 +245,5 @@ export const ThePokemonSalesmanEncounter: MysteryEncounter = MysteryEncounterBui
  * @returns A random species that has at most 5 starter cost and is not Mythical, Paradox, etc.
  */
 export function getSalesmanSpeciesOffer(): PokemonSpecies {
-  return getPokemonSpecies(
-    getRandomSpeciesByStarterCost([0, 5], NON_LEGEND_PARADOX_POKEMON, undefined, false, false, false),
-  );
+  return getRandomSpeciesByStarterCost(1, 5);
 }

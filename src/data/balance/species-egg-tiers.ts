@@ -583,3 +583,5 @@ export const speciesEggTiers = {
   [SpeciesId.PALDEA_WOOPER]: EggTier.RARE,
   [SpeciesId.BLOODMOON_URSALUNA]: EggTier.EPIC
 };
+
+export const hatchableStarters: SpeciesId[] = Object.entries(speciesEggTiers).map(Number);

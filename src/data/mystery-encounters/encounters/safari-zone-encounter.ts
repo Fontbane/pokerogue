@@ -1,7 +1,7 @@
 import { CLASSIC_MODE_MYSTERY_ENCOUNTER_WAVES } from "#app/constants";
 import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
-import { NON_LEGEND_PARADOX_POKEMON } from "#balance/special-species-groups";
+import type { EventEncounter } from "#app/timed-event-manager";
 import type { PokemonSpecies } from "#data/pokemon-species";
 import { MysteryEncounterOptionMode } from "#enums/mystery-encounter-option-mode";
 import { MysteryEncounterTier } from "#enums/mystery-encounter-tier";
@@ -10,26 +10,23 @@ import { PlayerGender } from "#enums/player-gender";
 import { PokeballType } from "#enums/pokeball";
 import { TrainerSlot } from "#enums/trainer-slot";
 import type { EnemyPokemon } from "#field/pokemon";
-import { HiddenAbilityRateBoosterModifier, IvScannerModifier } from "#modifiers/modifier";
+import { IvScannerModifier } from "#modifiers/modifier";
 import { getEncounterText, showEncounterText } from "#mystery-encounters/encounter-dialogue-utils";
 import {
+  getRandomSpeciesByStarterCost,
+  getValidEventEncounters,
   initSubsequentOptionSelect,
   leaveEncounterWithoutBattle,
   transitionMysteryEncounterIntroVisuals,
   updatePlayerMoney,
 } from "#mystery-encounters/encounter-phase-utils";
-import {
-  doPlayerFlee,
-  doPokemonFlee,
-  getRandomSpeciesByStarterCost,
-  trainerThrowPokeball,
-} from "#mystery-encounters/encounter-pokemon-utils";
+import { doPlayerFlee, doPokemonFlee, trainerThrowPokeball } from "#mystery-encounters/encounter-pokemon-utils";
 import type { MysteryEncounter } from "#mystery-encounters/mystery-encounter";
 import { MysteryEncounterBuilder } from "#mystery-encounters/mystery-encounter";
 import type { MysteryEncounterOption } from "#mystery-encounters/mystery-encounter-option";
 import { MysteryEncounterOptionBuilder } from "#mystery-encounters/mystery-encounter-option";
 import { MoneyRequirement } from "#mystery-encounters/mystery-encounter-requirements";
-import { NumberHolder, randSeedInt } from "#utils/common";
+import { isNullOrUndefined, randSeedInt, randSeedItem } from "#utils/common";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
 
 /** the i18n namespace for the encounter */
@@ -280,32 +277,55 @@ async function summonSafariPokemon() {
   // Safari pokemon roll twice on shiny and HA chances, but are otherwise normal
   let enemySpecies: PokemonSpecies;
   let pokemon: any;
+  const evencs = getValidEventEncounters();
+  let evenc: EventEncounter;
+  let isEventEncounter = false;
   globalScene.executeWithSeedOffset(
     () => {
-      enemySpecies = getSafariSpeciesSpawn();
+      evenc = randSeedItem(evencs);
+      isEventEncounter = !!evenc;
+      if (isEventEncounter) {
+        this.fleeAllowed = false;
+      }
+      enemySpecies = evenc ? getPokemonSpecies(evenc.species) : getSafariSpeciesSpawn();
       const level = globalScene.currentBattle.getLevelForWave();
-      enemySpecies = getPokemonSpecies(enemySpecies.getWildSpeciesForLevel(level, true, false, globalScene.gameMode));
-      pokemon = globalScene.addEnemyPokemon(enemySpecies, level, TrainerSlot.NONE, false);
-
-      // Roll shiny twice
-      if (!pokemon.shiny) {
-        pokemon.trySetShinySeed();
+      if (!evenc || !evenc.blockEvolution) {
+        enemySpecies = getPokemonSpecies(enemySpecies.getWildSpeciesForLevel(level, true, false, globalScene.gameMode));
       }
-
-      // Roll HA twice
-      if (pokemon.species.abilityHidden) {
-        const hiddenIndex = pokemon.species.ability2 ? 2 : 1;
-        if (pokemon.abilityIndex < hiddenIndex) {
-          const hiddenAbilityChance = new NumberHolder(256);
-          globalScene.applyModifiers(HiddenAbilityRateBoosterModifier, true, hiddenAbilityChance);
-
-          const hasHiddenAbility = !randSeedInt(hiddenAbilityChance.value);
-
-          if (hasHiddenAbility) {
-            pokemon.abilityIndex = hiddenIndex;
-          }
+      const eventPostProcess = (p: EnemyPokemon) => {
+        if (!isNullOrUndefined(evenc.formIndex)) {
+          p.formIndex = evenc.formIndex;
         }
-      }
+        // Reroll shiny
+        if (!p.shiny) {
+          p.trySetShinySeed();
+        }
+
+        // Reroll HA
+        if (p.species.abilityHidden) {
+          p.tryRerollHiddenAbilitySeed();
+        }
+      };
+      const postProcess = (p: EnemyPokemon) => {
+        if (isEventEncounter) {
+          eventPostProcess(p);
+        }
+        if (!p.shiny) {
+          p.trySetShinySeed();
+        }
+        if (p.species.abilityHidden) {
+          p.tryRerollHiddenAbilitySeed();
+        }
+      };
+      pokemon = globalScene.addEnemyPokemon(
+        enemySpecies,
+        level,
+        TrainerSlot.NONE,
+        false,
+        false,
+        undefined,
+        postProcess,
+      );
 
       pokemon.calculateStats();
 
@@ -539,7 +559,7 @@ async function doEndTurn(cursorIndex: number) {
 
   const encounter = globalScene.currentBattle.mysteryEncounter!;
   const pokemon = encounter.misc.pokemon;
-  const isFlee = isPokemonFlee(pokemon, encounter.misc.fleeStage);
+  const isFlee = this.fleeAllowed && isPokemonFlee(pokemon, encounter.misc.fleeStage);
   if (isFlee) {
     // Pokemon flees!
     await doPokemonFlee(pokemon);
@@ -570,7 +590,5 @@ async function doEndTurn(cursorIndex: number) {
  * @returns A random species that has at most 5 starter cost and is not Mythical, Paradox, etc.
  */
 export function getSafariSpeciesSpawn(): PokemonSpecies {
-  return getPokemonSpecies(
-    getRandomSpeciesByStarterCost([0, 5], NON_LEGEND_PARADOX_POKEMON, undefined, false, false, false),
-  );
+  return getRandomSpeciesByStarterCost(1, 5);
 }

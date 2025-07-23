@@ -12,6 +12,7 @@ import {
   pokemonFormLevelMoves as pokemonSpeciesFormLevelMoves,
   pokemonSpeciesLevelMoves,
 } from "#balance/pokemon-level-moves";
+import { LEGENDARY_POKEMON, MYTHICAL_POKEMON, SUBLEGENDARY_POKEMON } from "#balance/special-species-groups";
 import { POKERUS_STARTER_COUNT, speciesStarterCosts } from "#balance/starters";
 import { allSpecies } from "#data/data-lists";
 import { GrowthRate } from "#data/exp";
@@ -831,6 +832,16 @@ export class PokemonSpecies extends PokemonSpeciesForm implements Localizable {
     this.genderDiffs = genderDiffs;
     this.canChangeForm = !!canChangeForm;
     this.forms = forms;
+
+    if (subLegendary) {
+      SUBLEGENDARY_POKEMON.push(id);
+    }
+    if (legendary) {
+      LEGENDARY_POKEMON.push(id);
+    }
+    if (mythical) {
+      MYTHICAL_POKEMON.push(id);
+    }
 
     this.localize();
 

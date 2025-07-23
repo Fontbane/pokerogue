@@ -3,7 +3,14 @@ import { AVERAGE_ENCOUNTERS_PER_RUN_TARGET, WEIGHT_INCREMENT_ON_SPAWN_MISS } fro
 import { timedEventManager } from "#app/global-event-manager";
 import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
+import type { EventEncounter } from "#app/timed-event-manager";
 import { BiomePoolTier, biomeLinks } from "#balance/biomes";
+import {
+  LEGENDARY_POKEMON,
+  MYTHICAL_POKEMON,
+  NON_LEGEND_PARADOX_POKEMON,
+  SUBLEGENDARY_POKEMON,
+} from "#balance/special-species-groups";
 import { initMoveAnim, loadMoveAnimAssets } from "#data/battle-anims";
 import { modifierTypes } from "#data/data-lists";
 import type { IEggOptions } from "#data/egg";
@@ -23,6 +30,7 @@ import type { MoveId } from "#enums/move-id";
 import { MysteryEncounterMode } from "#enums/mystery-encounter-mode";
 import type { Nature } from "#enums/nature";
 import { PokemonType } from "#enums/pokemon-type";
+import type { SpeciesId } from "#enums/species-id";
 import { StatusEffect } from "#enums/status-effect";
 import { TrainerSlot } from "#enums/trainer-slot";
 import type { TrainerType } from "#enums/trainer-type";
@@ -50,7 +58,7 @@ import type { OptionSelectConfig, OptionSelectItem } from "#ui/abstact-option-se
 import type { PartyOption, PokemonSelectFilter } from "#ui/party-ui-handler";
 import { PartyUiMode } from "#ui/party-ui-handler";
 import { coerceArray, isNullOrUndefined, randomString, randSeedInt, randSeedItem } from "#utils/common";
-import { getPokemonSpecies } from "#utils/pokemon-utils";
+import { getPokemonSpecies, getSpeciesByCost } from "#utils/pokemon-utils";
 import i18next from "i18next";
 
 /**
@@ -998,57 +1006,6 @@ export function handleMysteryEncounterTurnStartEffects(): boolean {
 }
 
 /**
- * Helper function for encounters such as {@linkcode UncommonBreedEncounter} which call for a random species including event encounters.
- * If the mon is from the event encounter list, it will do an extra shiny roll.
- * @param level the level of the mon, which differs between MEs
- * @param isBoss whether the mon should be a Boss
- * @param rerollHidden whether the mon should get an extra roll for Hidden Ability
- * @returns {@linkcode EnemyPokemon} for the requested encounter
- */
-export function getRandomEncounterSpecies(level: number, isBoss = false, rerollHidden = false): EnemyPokemon {
-  let bossSpecies: PokemonSpecies;
-  let isEventEncounter = false;
-  const eventEncounters = timedEventManager.getEventEncounters();
-  let formIndex: number | undefined;
-
-  if (eventEncounters.length > 0 && randSeedInt(2) === 1) {
-    const eventEncounter = randSeedItem(eventEncounters);
-    const levelSpecies = getPokemonSpecies(eventEncounter.species).getWildSpeciesForLevel(
-      level,
-      !eventEncounter.blockEvolution,
-      isBoss,
-      globalScene.gameMode,
-    );
-    isEventEncounter = true;
-    bossSpecies = getPokemonSpecies(levelSpecies);
-    formIndex = eventEncounter.formIndex;
-  } else {
-    bossSpecies = globalScene.arena.randomSpecies(
-      globalScene.currentBattle.waveIndex,
-      level,
-      0,
-      getPartyLuckValue(globalScene.getPlayerParty()),
-      isBoss,
-    );
-  }
-  const ret = new EnemyPokemon(bossSpecies, level, TrainerSlot.NONE, isBoss);
-  if (formIndex) {
-    ret.formIndex = formIndex;
-  }
-
-  //Reroll shiny or variant for event encounters
-  if (isEventEncounter) {
-    ret.trySetShinySeed();
-  }
-  //Reroll hidden ability
-  if (rerollHidden && ret.abilityIndex !== 2 && ret.species.abilityHidden) {
-    ret.tryRerollHiddenAbilitySeed();
-  }
-
-  return ret;
-}
-
-/**
  * TODO: remove once encounter spawn rate is finalized
  * Just a helper function to calculate aggregate stats for MEs in a Classic run
  * @param baseSpawnWeight
@@ -1305,4 +1262,108 @@ export function calculateRareSpawnAggregateStats(luckValue: number) {
   const stats = `Avg Commons: ${commonMean}\nAvg Rare: ${rareMean}\nAvg Super Rare: ${superRareMean}\nAvg Ultra Rare: ${ultraRareMean}\n`;
 
   console.log(stats);
+}
+
+/**
+ * Helper function for encounters such as {@linkcode UncommonBreedEncounter} which call for a random species including event encounters.
+ * If the mon is from the event encounter list, it will do an extra shiny roll.
+ * @param level the level of the mon, which differs between MEs
+ * @param isBoss whether the mon should be a Boss
+ * @param rerollHidden whether the mon should get an extra roll for Hidden Ability
+ * @returns {@linkcode EnemyPokemon} for the requested encounter
+ */
+export function getRandomEncounterSpecies(level: number, isBoss = false, rerollHidden = false): EnemyPokemon {
+  let bossSpecies: PokemonSpecies;
+  let isEventEncounter = false;
+  const eventEncounters = timedEventManager.getEventEncounters();
+  let formIndex: number | undefined;
+
+  if (eventEncounters.length > 0 && randSeedInt(2) === 1) {
+    const eventEncounter = randSeedItem(eventEncounters);
+    const levelSpecies = getPokemonSpecies(eventEncounter.species).getWildSpeciesForLevel(
+      level,
+      !eventEncounter.blockEvolution,
+      isBoss,
+      globalScene.gameMode,
+    );
+    isEventEncounter = true;
+    bossSpecies = getPokemonSpecies(levelSpecies);
+    formIndex = eventEncounter.formIndex;
+  } else {
+    bossSpecies = globalScene.arena.randomSpecies(
+      globalScene.currentBattle.waveIndex,
+      level,
+      0,
+      getPartyLuckValue(globalScene.getPlayerParty()),
+      isBoss,
+    );
+  }
+  const ret = new EnemyPokemon(bossSpecies, level, TrainerSlot.NONE, isBoss);
+  if (formIndex) {
+    ret.formIndex = formIndex;
+  }
+
+  //Reroll shiny or variant for event encounters
+  if (isEventEncounter) {
+    ret.trySetShinySeed();
+  }
+  //Reroll hidden ability
+  if (rerollHidden && ret.abilityIndex !== 2 && ret.species.abilityHidden) {
+    ret.tryRerollHiddenAbilitySeed();
+  }
+
+  return ret;
+}
+
+/**
+ *
+ * NOTE: This returns ANY random species, including those locked behind eggs, etc.
+ * @param starterTiers
+ * @param excludedSpecies
+ * @param types
+ * @param allowSubLegendary
+ * @param allowLegendary
+ * @param allowMythical
+ * @returns
+ */
+
+export function getRandomSpeciesByStarterCost(
+  min: number,
+  max?: number,
+  excludedSpecies?: SpeciesId[],
+  types?: PokemonType[],
+  allowSubLegendary = false,
+  allowLegendary = false,
+  allowMythical = false,
+  allowParadox = false,
+): PokemonSpecies {
+  const excluded = [...(excludedSpecies ?? [])];
+  if (!allowSubLegendary) {
+    excluded.push(...SUBLEGENDARY_POKEMON);
+  }
+  if (!allowLegendary) {
+    excluded.push(...LEGENDARY_POKEMON);
+  }
+  if (!allowMythical) {
+    excluded.push(...MYTHICAL_POKEMON);
+  }
+  if (!allowParadox) {
+    excluded.push(...NON_LEGEND_PARADOX_POKEMON);
+  }
+  let filteredSpecies = getSpeciesByCost(min, max);
+  if (excluded.length) {
+    filteredSpecies = filteredSpecies.filter(s => !excluded.includes(s));
+  }
+
+  let ret = filteredSpecies.map(s => getPokemonSpecies(s));
+
+  if (types && types.length > 0) {
+    ret = ret.filter(s => types.some(t => s.isOfType(t)));
+  }
+
+  return getPokemonSpecies(filteredSpecies);
+}
+
+export function getValidEventEncounters(filter: (species: SpeciesId) => boolean = () => true): EventEncounter[] {
+  return timedEventManager.getEventEncounters().filter(enc => filter(enc.species));
 }

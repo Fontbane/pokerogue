@@ -1,5 +1,6 @@
 import { CLASSIC_MODE_MYSTERY_ENCOUNTER_WAVES } from "#app/constants";
 import { globalScene } from "#app/global-scene";
+import { NON_LEGEND_PARADOX_POKEMON, NON_LEGEND_ULTRA_BEASTS } from "#balance/special-species-groups";
 import { modifierTypes } from "#data/data-lists";
 import { Challenges } from "#enums/challenges";
 import { MysteryEncounterOptionMode } from "#enums/mystery-encounter-option-mode";
@@ -10,82 +11,32 @@ import { SpeciesId } from "#enums/species-id";
 import type { PokemonHeldItemModifier } from "#modifiers/modifier";
 import { PokemonFormChangeItemModifier } from "#modifiers/modifier";
 import type { EnemyPartyConfig, EnemyPokemonConfig } from "#mystery-encounters/encounter-phase-utils";
-import { initBattleWithEnemyConfig, leaveEncounterWithoutBattle } from "#mystery-encounters/encounter-phase-utils";
-import { getRandomPlayerPokemon, getRandomSpeciesByStarterCost } from "#mystery-encounters/encounter-pokemon-utils";
+import {
+  getRandomSpeciesByStarterCost,
+  initBattleWithEnemyConfig,
+  leaveEncounterWithoutBattle,
+} from "#mystery-encounters/encounter-phase-utils";
+import { getRandomPlayerPokemon } from "#mystery-encounters/encounter-pokemon-utils";
 import type { MysteryEncounter } from "#mystery-encounters/mystery-encounter";
 import { MysteryEncounterBuilder } from "#mystery-encounters/mystery-encounter";
 import { MysteryEncounterOptionBuilder } from "#mystery-encounters/mystery-encounter-option";
 import { isNullOrUndefined, randSeedInt } from "#utils/common";
-import { getPokemonSpecies } from "#utils/pokemon-utils";
 
 /** i18n namespace for encounter */
 const namespace = "mysteryEncounters/darkDeal";
 
 /** Exclude Ultra Beasts (inludes Cosmog/Solgaleo/Lunala/Necrozma), Paradox (includes Miraidon/Koraidon), Eternatus, and Mythicals */
-const excludedBosses = [
-  SpeciesId.NECROZMA,
+const excludedBosses: SpeciesId[] = [
   SpeciesId.COSMOG,
   SpeciesId.COSMOEM,
   SpeciesId.SOLGALEO,
   SpeciesId.LUNALA,
-  SpeciesId.ETERNATUS,
-  SpeciesId.NIHILEGO,
-  SpeciesId.BUZZWOLE,
-  SpeciesId.PHEROMOSA,
-  SpeciesId.XURKITREE,
-  SpeciesId.CELESTEELA,
-  SpeciesId.KARTANA,
-  SpeciesId.GUZZLORD,
-  SpeciesId.POIPOLE,
-  SpeciesId.NAGANADEL,
-  SpeciesId.STAKATAKA,
-  SpeciesId.BLACEPHALON,
-  SpeciesId.GREAT_TUSK,
-  SpeciesId.SCREAM_TAIL,
-  SpeciesId.BRUTE_BONNET,
-  SpeciesId.FLUTTER_MANE,
-  SpeciesId.SLITHER_WING,
-  SpeciesId.SANDY_SHOCKS,
-  SpeciesId.ROARING_MOON,
+  SpeciesId.NECROZMA,
   SpeciesId.KORAIDON,
-  SpeciesId.WALKING_WAKE,
-  SpeciesId.GOUGING_FIRE,
-  SpeciesId.RAGING_BOLT,
-  SpeciesId.IRON_TREADS,
-  SpeciesId.IRON_BUNDLE,
-  SpeciesId.IRON_HANDS,
-  SpeciesId.IRON_JUGULIS,
-  SpeciesId.IRON_MOTH,
-  SpeciesId.IRON_THORNS,
-  SpeciesId.IRON_VALIANT,
   SpeciesId.MIRAIDON,
-  SpeciesId.IRON_LEAVES,
-  SpeciesId.IRON_BOULDER,
-  SpeciesId.IRON_CROWN,
-  SpeciesId.MEW,
-  SpeciesId.CELEBI,
-  SpeciesId.DEOXYS,
-  SpeciesId.JIRACHI,
-  SpeciesId.DARKRAI,
-  SpeciesId.PHIONE,
-  SpeciesId.MANAPHY,
-  SpeciesId.ARCEUS,
-  SpeciesId.SHAYMIN,
-  SpeciesId.VICTINI,
-  SpeciesId.MELOETTA,
-  SpeciesId.KELDEO,
-  SpeciesId.GENESECT,
-  SpeciesId.DIANCIE,
-  SpeciesId.HOOPA,
-  SpeciesId.VOLCANION,
-  SpeciesId.MAGEARNA,
-  SpeciesId.MARSHADOW,
-  SpeciesId.ZERAORA,
-  SpeciesId.ZARUDE,
-  SpeciesId.MELTAN,
-  SpeciesId.MELMETAL,
-  SpeciesId.PECHARUNT,
-];
+]
+  .concat(NON_LEGEND_PARADOX_POKEMON)
+  .concat(NON_LEGEND_ULTRA_BEASTS);
 
 /**
  * Dark Deal encounter.
@@ -176,8 +127,15 @@ export const DarkDealEncounter: MysteryEncounter = MysteryEncounterBuilder.withE
         const bossModifiers: PokemonHeldItemModifier[] = encounter.misc.modifiers;
         // Starter egg tier, 35/50/10/5 %odds for tiers 6/7/8/9+
         const roll = randSeedInt(100);
-        const starterTier: number | [number, number] = roll >= 65 ? 6 : roll >= 15 ? 7 : roll >= 5 ? 8 : [9, 10];
-        const bossSpecies = getPokemonSpecies(getRandomSpeciesByStarterCost(starterTier, excludedBosses, bossTypes));
+        const starterTier: number = roll >= 65 ? 6 : roll >= 15 ? 7 : roll >= 5 ? 8 : 9;
+        const bossSpecies = getRandomSpeciesByStarterCost(
+          starterTier,
+          undefined,
+          excludedBosses,
+          bossTypes,
+          true,
+          true,
+        );
         const pokemonConfig: EnemyPokemonConfig = {
           species: bossSpecies,
           isBoss: true,

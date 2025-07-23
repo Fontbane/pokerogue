@@ -25,7 +25,7 @@ interface EventBanner {
   availableLangs?: string[];
 }
 
-interface EventEncounter {
+export interface EventEncounter {
   species: SpeciesId;
   blockEvolution?: boolean;
   formIndex?: number;

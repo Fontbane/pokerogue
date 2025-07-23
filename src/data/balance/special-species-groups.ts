@@ -1,5 +1,9 @@
 import { SpeciesId } from "#enums/species-id";
 
+export const LEGENDARY_POKEMON: SpeciesId[] = [];
+export const SUBLEGENDARY_POKEMON: SpeciesId[] = [];
+export const MYTHICAL_POKEMON: SpeciesId[] = [];
+
 /**
  * A list of all {@link https://bulbapedia.bulbagarden.net/wiki/Paradox_Pok%C3%A9mon | Paradox Pokemon}, NOT including the legendaries Miraidon and Koraidon.
  */

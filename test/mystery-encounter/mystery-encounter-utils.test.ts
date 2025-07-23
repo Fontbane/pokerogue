@@ -9,11 +9,11 @@ import {
   showEncounterDialogue,
   showEncounterText,
 } from "#mystery-encounters/encounter-dialogue-utils";
+import { getRandomSpeciesByStarterCost } from "#mystery-encounters/encounter-phase-utils";
 import {
   getHighestLevelPlayerPokemon,
   getLowestLevelPlayerPokemon,
   getRandomPlayerPokemon,
-  getRandomSpeciesByStarterCost,
   koPlayerPokemon,
 } from "#mystery-encounters/encounter-pokemon-utils";
 import { MysteryEncounter } from "#mystery-encounters/mystery-encounter";

@@ -1,6 +1,9 @@
+import { hatchableStarters } from "#balance/species-egg-tiers";
+import { speciesStarterCosts } from "#balance/starters";
 import { allSpecies } from "#data/data-lists";
 import type { PokemonSpecies } from "#data/pokemon-species";
 import type { SpeciesId } from "#enums/species-id";
+import { isBetween } from "./common";
 
 /**
  * Gets the {@linkcode PokemonSpecies} object associated with the {@linkcode SpeciesId} enum given
@@ -18,4 +21,12 @@ export function getPokemonSpecies(species: SpeciesId | SpeciesId[]): PokemonSpec
     return allSpecies.find(s => s.speciesId === species)!; // TODO: is this bang correct?
   }
   return allSpecies[species - 1];
+}
+
+export function getSpeciesByCost(minCost: number, maxCost?: number): SpeciesId[] {
+  if (maxCost) {
+    return hatchableStarters.filter(s => isBetween(speciesStarterCosts[s], minCost, maxCost));
+  }
+
+  return hatchableStarters.filter(s => speciesStarterCosts[s] === minCost);
 }
