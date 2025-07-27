@@ -345,7 +345,7 @@ export class BattleScene extends SceneBase {
     initGlobalScene(this);
   }
 
-  loadPokemonAtlas(key: string, atlasPath: string, experimental?: boolean) {
+  loadPokemonAtlas(key: string, atlasPath: string, jsonPath: string, experimental?: boolean) {
     if (experimental === undefined) {
       experimental = this.experimentalSprites;
     }

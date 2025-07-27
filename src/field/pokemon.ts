@@ -135,7 +135,7 @@ import type { Move } from "#moves/move";
 import { getMoveTargets } from "#moves/move-utils";
 import { PokemonMove } from "#moves/pokemon-move";
 import { loadMoveAnimations } from "#sprites/pokemon-asset-loader";
-import type { Variant } from "#sprites/variant";
+import type { Variant, VariantSet } from "#sprites/variant";
 import { populateVariantColors, variantColorCache, variantData } from "#sprites/variant";
 import { achvs } from "#system/achv";
 import type { StarterDataEntry, StarterMoveset } from "#system/game-data";
@@ -174,6 +174,9 @@ import { argbFromRgba, QuantizerCelebi, rgbaFromArgb } from "@material/material-
 import i18next from "i18next";
 import Phaser from "phaser";
 import SoundFade from "phaser3-rex-plugins/plugins/soundfade";
+import { PokeAssetType } from "#types/pokemon-util-types";
+import type { PokemonGfxRequestParams, PokemonRenderData } from "#types/pokemon-util-types";
+import { hasFemaleIcon } from "#sprites/pokemon-sprite";
 
 /** Base typeclass for damage parameter methods, used for DRY */
 type damageParams = {
@@ -246,6 +249,12 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
   public teraType: PokemonType;
   public isTerastallized: boolean;
   public stellarTypesBoosted: PokemonType[];
+  public baseSpriteKey: string; // female__gastrodon-east
+  public variantDataIndex: string; // gastrodon-east
+  public spriteKey: string; // pkmn__shiny__female__gastrodon-east_2 ignores back
+  public spriteId: string; // shiny__female__gastrodon-east_2 ignores back
+  public battleSpriteKey: string; // pkmn__back__shiny__female__gastrodon-east_2
+  public battleSpriteId: string; // back__shiny__female__gastrodon-east_2     species spriteId
 
   public fusionSpecies: PokemonSpecies | null;
   public fusionFormIndex: number;
@@ -634,6 +643,7 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
         fusionFormIndex: pokemon.fusionFormIndex,
         fusionSpecies: pokemon.fusionSpecies || undefined,
         fusionGender: pokemon.fusionGender,
+        name: pokemon.name,
       };
 
       this.name = pokemon.name;
@@ -664,7 +674,8 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
         },
         species: randomIllusion.speciesId,
         formIndex: randomIllusion.formIndex,
-        gender: this.gender,
+        name: randomIllusion.name,
+        gender: randomIllusion.malePercent === null ? Gender.GENDERLESS : randomIllusion.malePercent < 0.5 ? Gender.FEMALE : Gender.MALE,
         pokeball: this.pokeball,
       };
 
@@ -694,6 +705,93 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     this.loadAssets(false).then(() => this.playAnim());
     this.updateInfo(true);
     return true;
+  }
+
+  getIllusionRenderData(): PokemonRenderData {
+    return {
+      species: this.summonData.illusion!.species,
+      female: this.summonData.illusion!.gender === Gender.FEMALE && getPokemonSpecies(this.summonData.illusion!.species).genderDiffs,
+      formIndex: this.summonData.illusion!.formIndex,
+      shiny: this.summonData.illusion!.shiny,
+      variant: this.summonData.illusion!.variant,
+      key: "",
+    };
+  }
+
+  getFusionRenderData() {
+    const speciesForm = this.getFusionSpeciesForm(false, true);
+    return {
+      species: speciesForm.speciesId,
+      female: this.getFusionGender(false, true) === Gender.FEMALE && getPokemonSpecies(speciesForm.speciesId).genderDiffs,
+      formIndex: speciesForm.formIndex,
+      shiny: this.summonData.illusion ? this.summonData.illusion.fusionShiny : this.fusionShiny,
+      variant: this.summonData.illusion ? this.summonData.illusion.fusionVariant : this.fusionVariant,
+      key: "",
+    };
+  }
+
+  processGfxRequest(gfxReq: PokemonGfxRequestParams) {
+    const ret = this.getBaseRenderData(gfxReq);
+    if (gfxReq.type === PokeAssetType.ANIMJSON) {
+      ret.shiny = false;
+      ret.variant = undefined;
+      if ([SpeciesId.ARCEUS, SpeciesId.FLABEBE, SpeciesId.FLOETTE, SpeciesId.FLORGES, SpeciesId.SILVALLY, SpeciesId.ALCREMIE].includes(ret.species)) {
+        ret.formIndex = 0;
+        ret.formKey = "";
+      }
+    } else {
+      if (ret.formIndex && !ret.formKey) {
+        ret.formKey = getPokemonSpecies(ret.species).getFormSpriteKey(ret.formIndex);
+      }
+      if (ret.formKey) {
+        ret.key += "-" + ret.formKey;
+      }
+      let varTier = 0;
+      let isBaseReplace = false;
+      if (ret.shiny) {
+        varTier = (ret.variant || 0) + 1;
+        let config = variantData;
+        if (gfxReq.back) {
+          config = config["back"];
+          ret.key = "back____" + ret.key;
+        }
+        if (ret.female && config["female"].hasOwnProperty(ret.key) && (config["female"][ret.key!] as VariantSet)[ret.variant || 0]) {
+          config = config["female"];
+          if (gfxReq.type === PokeAssetType.VARIANTJSON) {
+            ret.key = "female____" + ret.key;
+          }
+        }
+        if (config.hasOwnProperty(ret.key)) {
+          ret.variantType = (config[ret.key] as VariantSet)[ret.variant || 0];
+          isBaseReplace = !!ret.variantType && varTier === 1;
+        }
+        if (isBaseReplace) {
+          ret.key += "-s";
+        } else {
+          ret.key += "_" + varTier;
+        }
+      }
+    }
+    return ret;
+  }
+
+  getBaseRenderData(gfxReq?: PokemonGfxRequestParams): PokemonRenderData {
+    let ret: PokemonRenderData;
+    if (gfxReq?.forFusion) {
+      ret = this.getFusionRenderData();
+    } else if (this.summonData.illusion) {
+      ret = this.getIllusionRenderData();
+    } else {
+      ret = {
+        species: this.species.speciesId,
+        female: this.gender === Gender.FEMALE && this.species.genderDiffs,
+        formIndex: this.formIndex,
+        shiny: this.shiny,
+        variant: this.variant,
+        key: "",
+      };
+    }
+    return getPokemonSpeciesForm(ret.species, ret.formIndex || 0).getRenderData(gfxReq, ret);
   }
 
   abstract isPlayer(): this is PlayerPokemon;
@@ -913,15 +1011,15 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     );
   }
 
-  getBattleSpriteId(back?: boolean, ignoreOverride?: boolean): string {
-    if (back === undefined) {
+  getBattleSpriteId(back = false, ignoreOverride = false, useIllusion = true): string {
+    if (!back) {
       back = this.isPlayer();
     }
 
     const formIndex = this.summonData.illusion?.formIndex ?? this.formIndex;
 
-    return this.getSpeciesForm(ignoreOverride, true).getSpriteId(
-      this.getGender(ignoreOverride, true) === Gender.FEMALE,
+    return this.getSpeciesForm(ignoreOverride, useIllusion).getSpriteId(
+      this.getGender(ignoreOverride, useIllusion) === Gender.FEMALE,
       formIndex,
       this.shiny,
       this.variant,

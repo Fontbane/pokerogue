@@ -30,12 +30,20 @@ export interface IllusionData {
   gender: Gender;
   /** The pokeball of the illusion */
   pokeball: PokeballType;
+  /** The name of the illusion */
+  name: string;
   /** The fusion species of the illusion if it's a fusion */
   fusionSpecies?: PokemonSpecies;
   /** The fusionFormIndex of the illusion */
   fusionFormIndex?: number;
-  /** The fusionGender of the illusion if it's a fusion */
+  /** Whether the illusion is shiny */
+  shiny?: boolean;
+  /** The variant of the illusion */
+  variant?: Variant;
+  /** Whether the secondary component mon of a fused illusion is shiny */
+  fusionShiny?: boolean;
+  /** The variant of the secondary component mon of a fused illusion */
+  fusionVariant?: Variant;
+  /** The gender of the illusion */
   fusionGender?: Gender;
-  /** The level of the illusion (not used currently) */
-  level?: number;
 }

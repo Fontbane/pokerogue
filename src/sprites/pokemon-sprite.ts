@@ -1,6 +1,6 @@
-import type { BattleScene } from "#app/battle-scene";
 import { globalScene } from "#app/global-scene";
 import { Gender } from "#data/gender";
+import { SpeciesId } from "#enums/species-id";
 import type { Pokemon } from "#field/pokemon";
 import { hasExpSprite } from "#sprites/sprite-utils";
 import type { Variant, VariantSet } from "#sprites/variant";
@@ -10,6 +10,64 @@ import { variantColorCache, variantData } from "#sprites/variant";
 
 /** Regex matching double underscores */
 const DUNDER_REGEX = /_{2}/g;
+
+export function hasFemaleIcon(species: SpeciesId, tier = 0): boolean {
+  const femaleIcons = [
+    [
+      // Species where BASE has female icons
+      SpeciesId.DODUO,
+      SpeciesId.DODRIO,
+      SpeciesId.HIPPOPOTAS,
+      SpeciesId.HIPPOWDON,
+      SpeciesId.UNFEZANT,
+      SpeciesId.FRILLISH,
+      SpeciesId.JELLICENT,
+      SpeciesId.PYROAR,
+    ],
+    [
+      // Species where T1 SHINY has female icons
+      SpeciesId.DODUO,
+      SpeciesId.DODRIO,
+      SpeciesId.HIPPOPOTAS,
+      SpeciesId.HIPPOWDON,
+      SpeciesId.UNFEZANT,
+      SpeciesId.FRILLISH,
+      SpeciesId.JELLICENT,
+      SpeciesId.PYROAR,
+    ],
+    [
+      // Species where T2 SHINY has female icons
+      SpeciesId.DODUO,
+      SpeciesId.DODRIO,
+      SpeciesId.MEGANIUM,
+      SpeciesId.TORCHIC,
+      SpeciesId.COMBUSKEN,
+      SpeciesId.BLAZIKEN,
+      SpeciesId.HIPPOPOTAS,
+      SpeciesId.HIPPOWDON,
+      SpeciesId.UNFEZANT,
+      SpeciesId.FRILLISH,
+      SpeciesId.JELLICENT,
+      SpeciesId.PYROAR,
+    ],
+    [
+      // Species where T3 SHINY has female icons
+      SpeciesId.DODUO,
+      SpeciesId.DODRIO,
+      SpeciesId.MEGANIUM,
+      SpeciesId.TORCHIC,
+      SpeciesId.COMBUSKEN,
+      SpeciesId.BLAZIKEN,
+      SpeciesId.HIPPOPOTAS,
+      SpeciesId.HIPPOWDON,
+      SpeciesId.UNFEZANT,
+      SpeciesId.FRILLISH,
+      SpeciesId.JELLICENT,
+      SpeciesId.PYROAR,
+    ],
+  ];
+  return femaleIcons[tier].includes(species);
+}
 
 /**
  * Calculate the sprite ID from a pokemon form.
@@ -54,16 +112,11 @@ export function getSpriteAtlasPath(pokemon: Pokemon, ignoreOverride = false): st
  * @param variant - The variant to load
  * @param scene - The scene to load the assets in (defaults to the global scene)
  */
-export async function loadPokemonVariantAssets(
-  spriteKey: string,
-  fileRoot: string,
-  variant: Variant,
-  scene: BattleScene = globalScene,
-): Promise<void> {
+export async function loadPokemonVariantAssets(spriteKey: string, fileRoot: string, variant: Variant): Promise<void> {
   if (variantColorCache.hasOwnProperty(spriteKey)) {
     return;
   }
-  const useExpSprite = scene.experimentalSprites && hasExpSprite(spriteKey);
+  const useExpSprite = globalScene.experimentalSprites && hasExpSprite(spriteKey);
   if (useExpSprite) {
     fileRoot = `exp/${fileRoot}`;
   }
@@ -73,7 +126,7 @@ export async function loadPokemonVariantAssets(
   if (!variantConfig || variantSet[variant] !== 1) {
     return;
   }
-  variantColorCache[spriteKey] = await scene
+  variantColorCache[spriteKey] = await globalScene
     .cachedFetch(`./images/pokemon/variant/${fileRoot}.json`)
     .then(res => res.json());
 }
