@@ -29,7 +29,7 @@ import type { Variant, VariantSet } from "#sprites/variant";
 import { populateVariantColorCache, variantColorCache, variantData } from "#sprites/variant";
 import type { StarterMoveset } from "#system/game-data";
 import type { Localizable } from "#types/locales";
-import { PokeAssetType, PokemonGfxRequestParams, PokemonLoadAssetParams, PokemonRenderData } from "#types/pokemon-util-types";
+import { PokeAssetType, PokemonGfxKey, PokemonGfxRequestParams, PokemonLoadAssetParams, PokemonRenderData } from "#types/pokemon-util-types";
 import {
   capitalizeString,
   isNullOrUndefined,
@@ -379,8 +379,8 @@ export abstract class PokemonSpeciesForm {
     return ret;
   }
 
-  getSpriteAtlasPath(female: boolean, formIndex?: number, shiny?: boolean, variant?: number, back?: boolean): string {
-    const spriteId = this.getSpriteId(female, formIndex, shiny, variant, back).replace(/_{2}/g, "/");
+  getSpriteAtlasPath(gfxReq: PokemonLoadAssetParams): string {
+    const spriteId = gfxReq.fullSpriteId!.replace(/_{2}/g, "/");
     return `${/_[1-3]$/.test(spriteId) ? "variant/" : ""}${spriteId}`;
   }
 
@@ -399,18 +399,19 @@ export abstract class PokemonSpeciesForm {
   }
 
   /** Compute the sprite ID of the pokemon form. */
-  getSpriteId(gfxReq: PokemonLoadAssetParams): string {
-    const baseSpriteKey = this.getBaseSpriteKey(female, formIndex);
+  getSpriteId(gfxComp: PokemonGfxKey): string {
+    const formSpriteKey = gfxComp.formKey ?? this.getFormSpriteKey(gfxComp.formIndex);
+    const showGenderDiffs =
+      this.genderDiffs &&
+      gfxComp.female &&
+      ![SpeciesFormKey.MEGA, SpeciesFormKey.GIGANTAMAX].includes(formSpriteKey as SpeciesFormKey);
+    const baseSpriteKey = `${showGenderDiffs ? "female__" : ""}${this.speciesId}${formSpriteKey ? `-${formSpriteKey}` : ""}`;
 
-    let config = variantData;
-    `${back ? "back__" : ""}${baseSpriteKey}`.split("__").map(p => (config ? (config = config[p]) : null));
-    const variantSet = config as VariantSet;
-
-    return `${back ? "back__" : ""}${shiny && (!variantSet || (!variant && !variantSet[variant || 0])) ? "shiny__" : ""}${baseSpriteKey}${shiny && variantSet && variantSet[variant] === 2 ? `_${variant + 1}` : ""}`;
+    return `${gfxComp.back ? "back__" : ""}${gfxComp.shiny && gfxComp.variant === undefined ? "shiny__" : ""}${baseSpriteKey}${gfxComp.shiny && gfxComp.variant ? `_${gfxComp.variant + 1}` : ""}`;
   }
 
-  getSpriteKey(female: boolean, formIndex?: number, shiny?: boolean, variant?: number, back?: boolean): string {
-    return `pkmn__${this.getSpriteId(female, formIndex, shiny, variant, back)}`;
+  getSpriteKey(gfxComp: PokemonGfxKey): string {
+    return `pkmn__${this.getSpriteId(gfxComp)}`;
   }
 
   abstract getFormSpriteKey(formIndex?: number): string;
@@ -627,64 +628,75 @@ export abstract class PokemonSpeciesForm {
   async loadVariantColors(
     gfxReq: PokemonLoadAssetParams,
   ): Promise<void> {
-    const variantReq = this.buildVariantGfxReq(gfxReq);
-    if (!variantReq) {
-      return;
-    }
-
-    const variantInfo = variantData[gfxReq.key!];
     // Do nothing if there is no variant information or the variant does not have color replacements
-    if (!variantInfo || (gfxReq.variantType || variantInfo[gfxReq.variant!]) !== 1) {
+    if (gfxReq.variantType !== 1) {
       return;
     }
 
     await populateVariantColorCache(
-      "pkmn__" + gfxReq.key!,
-      globalScene.experimentalSprites && hasExpSprite(gfxReq.key!),
-      gfxReq.key!.replace("__", "/"),
+      "pkmn__" + gfxReq.fullSpriteId,
+      globalScene.experimentalSprites && hasExpSprite(gfxReq.fullSpriteId!),
+      gfxReq.battleSpriteId!.replace("__", "/"),
     );
   }
 
   buildVariantGfxReq(gfxReq: PokemonLoadAssetParams): PokemonLoadAssetParams | null {
-    if (gfxReq.variant === undefined) {
-      return null;
+    if (!gfxReq.comp) {
+      gfxReq.comp = { species: "" + this.speciesId };
     }
-    if (!gfxReq.key) {
-      gfxReq.key = "" + this.speciesId;
-      if (
-        !(this.speciesId === SpeciesId.MINIOR && gfxReq.variant === 1 && this.formIndex < 7) && 
-        this.formIndex
-      ) {
-        gfxReq.key += "-" + this.getFormSpriteKey();
+    if (this.speciesId === SpeciesId.MINIOR) {
+      if (this.formIndex < 7 && (gfxReq.variant || 0) < 2) {
+        gfxReq.comp.formIndex = 0;
+        gfxReq.comp.formKey = undefined;
+      } else if (gfxReq.shiny && !gfxReq.variant) {
+        gfxReq.comp.formIndex = 7;
+        gfxReq.comp.formKey = "core";
+        return gfxReq;
       }
     }
-    if (gfxReq.type === PokeAssetType.VARIANTCACHE && variantColorCache[gfxReq.key]) {
+    if (gfxReq.variant === undefined) {
+      return gfxReq;
+    }
+    if (
+        !(this.speciesId === SpeciesId.MINIOR && gfxReq.variant === 1 && this.formIndex < 7) && 
+        this.formIndex && !gfxReq.comp.formKey
+      ) {
+      gfxReq.comp.formKey = this.getFormSpriteKey();
+    }
+    if (!gfxReq.baseSpriteKey) {
+      gfxReq.baseSpriteKey = gfxReq.comp.formKey ? gfxReq.comp.species + "-" + gfxReq.comp.formKey : gfxReq.comp.species;
+    }
+    if (gfxReq.type === PokeAssetType.VARIANTCACHE && variantColorCache[gfxReq.baseSpriteKey]) {
       return gfxReq;
     }
 
-    let variantInfo = variantData[gfxReq.key];
+    let variantInfo = variantData[gfxReq.baseSpriteKey];
     // Do nothing if there is no variant information or the variant does not have color replacements
     if (!variantInfo || gfxReq.variant === 0 && variantInfo[0] === 0) {
-      return null;
+      gfxReq.variantType = 0;
+      gfxReq.variant = undefined;
+      return gfxReq;
     }
 
-    if (gfxReq.female && variantData["female"].hasOwnProperty(gfxReq.key)) {
-      const backVar = gfxReq.back && variantData["back"]["female"].hasOwnProperty(gfxReq.key) ? variantData["back"]["female"][gfxReq.key][gfxReq.variant] : 0;
+    gfxReq.comp.back = gfxReq.back;
+
+    if (gfxReq.female && variantData["female"].hasOwnProperty(gfxReq.baseSpriteKey)) {
+      const backVar = gfxReq.back && variantData["back"]["female"].hasOwnProperty(gfxReq.baseSpriteKey) ? variantData["back"]["female"][gfxReq.baseSpriteKey][gfxReq.variant] : 0;
       if (backVar) { // Female back
-        gfxReq.key = "back__female__" + gfxReq.key;
+        gfxReq.comp.back = true;
+        gfxReq.comp.female = true;
         gfxReq.variantType = backVar;
-        return gfxReq;
+      } else if (variantData["female"][gfxReq.baseSpriteKey][gfxReq.variant]) { // Female front
+        gfxReq.variantType = variantData["female"][gfxReq.baseSpriteKey][gfxReq.variant];
+        gfxReq.comp.female = true;
+        gfxReq.comp.back = false;
       }
-      if (variantData["female"][gfxReq.key][gfxReq.variant]) { // Female front
-        gfxReq.back = false;
-        gfxReq.variantType = variantData["female"][gfxReq.key][gfxReq.variant];
-        gfxReq.key = "female__" + gfxReq.key;
-        return gfxReq;
-      }
+    } else if (gfxReq.comp.back && variantData["back"].hasOwnProperty(gfxReq.baseSpriteKey) && variantData["back"][gfxReq.baseSpriteKey][gfxReq.variant]) { // Base back
+      gfxReq.variantType = variantData["back"][gfxReq.baseSpriteKey][gfxReq.variant];
     }
-    if (gfxReq.back && variantData["back"].hasOwnProperty(gfxReq.key) && variantData["back"][gfxReq.key][gfxReq.variant]) { // Base back
-      gfxReq.variantType = variantData["back"][gfxReq.key][gfxReq.variant];
-      gfxReq.key = "back__" + gfxReq.key;
+
+    if (gfxReq.variantType === 2) {
+      gfxReq.comp.variant = gfxReq.variant;
     }
 
     return gfxReq;
@@ -707,22 +719,40 @@ export abstract class PokemonSpeciesForm {
     return gfxReq.key;
   }
 
+  buildJsonPath(gfxReq: PokemonLoadAssetParams): string {
+    let path = gfxReq.baseSpriteKey || "";
+    if (gfxReq.comp!.female) {
+      path = "female/" + path;
+    }
+    if (gfxReq.back) {
+      path = "back/" + path;
+    }
+    return path;
+  }
+
   async loadAssets(
     gfxReq: PokemonLoadAssetParams,
   ): Promise<void> {
     gfxReq.key = this.buildGfxReqKey(gfxReq);
     const rd = this.getRenderData(gfxReq, gfxReq);
     let baseSpriteKey = gfxReq.key;
+
+    if (!gfxReq.comp) {
+      gfxReq.comp = { species: "" + this.speciesId };
+    }
+
     gfxReq = this.buildVariantGfxReq(gfxReq) ?? gfxReq;
-    const spriteKey = "pkmn__" + this.getSpriteId(gfxReq);
+    const back = gfxReq.comp!.back;
+    gfxReq.comp!.back = gfxReq.back;
+    gfxReq.fullSpriteId = this.getSpriteId(gfxReq.comp!);
+    gfxReq.battleSpriteId = back !== gfxReq.back ? gfxReq.fullSpriteId.substring(6) : gfxReq.fullSpriteId;
+    const spriteKey = "pkmn__" + gfxReq.fullSpriteId;
     const atlasPath = this.getSpriteAtlasPath(gfxReq);
-    globalScene.loadPokemonAtlas(spriteKey, spritePath);
+    gfxReq.jsonPath = this.buildJsonPath(gfxReq);
+    globalScene.loadPokemonAtlas(spriteKey, atlasPath, gfxReq.jsonPath);
     globalScene.load.audio(this.getCryKey(this.formIndex), `audio/${this.getCryKey(this.formIndex)}.m4a`);
     if (!isNullOrUndefined(gfxReq.variant)) {
-      const variantReq = gfxReq;
-      variantReq.key = undefined;
-      variantReq.type = PokeAssetType.VARIANTCACHE;
-      await this.loadVariantColors(variantReq);
+      await this.loadVariantColors(gfxReq);
     }
     return new Promise<void>(resolve => {
       globalScene.load.once(Phaser.Loader.Events.COMPLETE, () => {

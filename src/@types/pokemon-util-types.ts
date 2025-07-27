@@ -20,11 +20,28 @@ export interface PokemonRenderData {
   formKey?: string;
   variantType?: Variant;
   key?: string;
+  comp?: PokemonGfxKey;
   spriteKey?: string;
-  spriteId?: string;
-  battleSpriteKey?: string;
-  battleSpriteId?: string;
+  spriteId?: string; // 
+  fullSpriteKey?: string; // includes back
+  fullSpriteId?: string; // 
+  baseSpriteKey?: string; // female__gastrodon-east
+  variantDataIndex?: string; // gastrodon-east
+  atlasPath?: string;
+  jsonPath?: string;
+  battleSpriteKey?: string; // pkmn__back__shiny__female__gastrodon-east_2
+  battleSpriteId?: string; // back__shiny__female__gastrodon-east_2     species spriteId
   keys?: string[];
+}
+
+export interface PokemonGfxKey {
+  species: string;
+  formIndex?: number;
+  formKey?: string;
+  female?: boolean;
+  back?: boolean;
+  shiny?: boolean;
+  variant?: Variant;
 }
 
 export interface PokemonGfxRequestParams {
