@@ -2,7 +2,7 @@ import { pokerogueApi } from "#api/pokerogue-api";
 import { FAKE_TITLE_LOGO_CHANCE } from "#app/constants";
 import { timedEventManager } from "#app/global-event-manager";
 import { globalScene } from "#app/global-scene";
-import { TimedEventDisplay } from "#app/timed-event-manager";
+import { EventCause, TimedEventDisplay } from "#app/timed-event-manager";
 import { getSplashMessages } from "#data/splash-messages";
 import { PlayerGender } from "#enums/player-gender";
 import type { SpeciesId } from "#enums/species-id";
@@ -195,7 +195,7 @@ export class TitleUiHandler extends OptionSelectUiHandler {
    */
   private getLogo(): string {
     // Invert spawn chances on april fools
-    const aprilFools = timedEventManager.isAprilFoolsActive();
+    const aprilFools = timedEventManager.isEventForHolidayActive(EventCause.APR_FOOLS);
     return aprilFools === !!randInt(FAKE_TITLE_LOGO_CHANCE) ? "logo_fake" : "logo";
   }
 }

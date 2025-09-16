@@ -1,5 +1,4 @@
 import type { SuppressWeatherEffectAbAttr } from "#abilities/ability";
-import { timedEventManager } from "#app/global-event-manager";
 import { globalScene } from "#app/global-scene";
 import { getPokemonNameWithAffix } from "#app/messages";
 import { BiomeId } from "#enums/biome-id";
@@ -239,7 +238,7 @@ export function getWeatherBlockMessage(weatherType: WeatherType): string {
   return i18next.t("weather:defaultEffectMessage");
 }
 
-export interface WeatherPoolEntry {
+interface WeatherPoolEntry {
   weatherType: WeatherType;
   weight: number;
 }
@@ -364,10 +363,6 @@ export function getRandomWeatherType(arena: Arena): WeatherType {
         weatherPool.push({ weatherType: WeatherType.SUNNY, weight: 2 });
       }
       break;
-  }
-
-  if (arena.biomeType === BiomeId.TOWN && timedEventManager.isEventActive()) {
-    timedEventManager.getWeather()?.map(w => weatherPool.push(w));
   }
 
   if (weatherPool.length > 1) {

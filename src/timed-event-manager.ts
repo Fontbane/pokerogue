@@ -1,15 +1,31 @@
 import { globalScene } from "#app/global-scene";
 import { CLASSIC_CANDY_FRIENDSHIP_MULTIPLIER } from "#balance/starters";
-import type { WeatherPoolEntry } from "#data/weather";
 import { Challenges } from "#enums/challenges";
 import { MysteryEncounterTier } from "#enums/mystery-encounter-tier";
 import { MysteryEncounterType } from "#enums/mystery-encounter-type";
 import { SpeciesId } from "#enums/species-id";
 import { TextStyle } from "#enums/text-style";
-import { WeatherType } from "#enums/weather-type";
 import { addTextObject } from "#ui/text";
 import type { nil } from "#utils/common";
 import i18next from "i18next";
+
+const TIMED_EVENT_POLL_TIME = 3000;
+
+export enum EventCause {
+  MISC,
+  LUNAR_NY,
+  VALENTINES,
+  PKMN_DAY,
+  APR_FOOLS,
+  PRIDE,
+  HALLOWEEN,
+  XMAS,
+  NEW_YEAR,
+  SPRING,
+  SUMMER,
+  AUTUMN,
+  WINTER,
+}
 
 export enum EventType {
   SHINY,
@@ -52,6 +68,7 @@ interface EventChallenge {
 interface TimedEvent extends EventBanner {
   name: string;
   eventType: EventType;
+  eventCause: EventCause;
   shinyMultiplier?: number;
   classicFriendshipMultiplier?: number;
   luckBoost?: number;
@@ -60,7 +77,6 @@ interface TimedEvent extends EventBanner {
   endDate: Date;
   eventEncounters?: EventEncounter[];
   delibirdyBuff?: string[];
-  weather?: WeatherPoolEntry[];
   mysteryEncounterTierChanges?: EventMysteryEncounterTier[];
   luckBoostedSpecies?: SpeciesId[];
   boostFusions?: boolean; //MODIFIER REWORK PLEASE
@@ -70,10 +86,11 @@ interface TimedEvent extends EventBanner {
   dailyRunChallenges?: EventChallenge[];
 }
 
-const timedEvents: TimedEvent[] = [
+const inactiveTimedEvents: TimedEvent[] = [
   {
     name: "Winter Holiday Update",
     eventType: EventType.SHINY,
+    eventCause: EventCause.XMAS,
     shinyMultiplier: 2,
     upgradeUnlockedVouchers: true,
     startDate: new Date(Date.UTC(2024, 11, 21, 0)),
@@ -104,7 +121,6 @@ const timedEvents: TimedEvent[] = [
       { species: SpeciesId.IRON_BUNDLE },
     ],
     delibirdyBuff: ["CATCHING_CHARM", "SHINY_CHARM", "ABILITY_CHARM", "EXP_CHARM", "SUPER_EXP_CHARM", "HEALING_CHARM"],
-    weather: [{ weatherType: WeatherType.SNOW, weight: 1 }],
     mysteryEncounterTierChanges: [
       {
         mysteryEncounter: MysteryEncounterType.DELIBIRDY,
@@ -131,6 +147,7 @@ const timedEvents: TimedEvent[] = [
   {
     name: "Year of the Snake",
     eventType: EventType.LUCK,
+    eventCause: EventCause.LUNAR_NY,
     luckBoost: 1,
     startDate: new Date(Date.UTC(2025, 0, 29, 0)),
     endDate: new Date(Date.UTC(2025, 1, 3, 0)),
@@ -202,6 +219,7 @@ const timedEvents: TimedEvent[] = [
   {
     name: "Valentine",
     eventType: EventType.SHINY,
+    eventCause: EventCause.VALENTINES,
     startDate: new Date(Date.UTC(2025, 1, 10)),
     endDate: new Date(Date.UTC(2025, 1, 21)),
     boostFusions: true,
@@ -242,6 +260,7 @@ const timedEvents: TimedEvent[] = [
   {
     name: "PKMNDAY2025",
     eventType: EventType.LUCK,
+    eventCause: EventCause.PKMN_DAY,
     startDate: new Date(Date.UTC(2025, 1, 27)),
     endDate: new Date(Date.UTC(2025, 2, 4)),
     classicFriendshipMultiplier: 4,
@@ -293,6 +312,7 @@ const timedEvents: TimedEvent[] = [
   {
     name: "April Fools 2025",
     eventType: EventType.LUCK,
+    eventCause: EventCause.APR_FOOLS,
     startDate: new Date(Date.UTC(2025, 2, 31)),
     endDate: new Date(Date.UTC(2025, 3, 3)),
     bannerKey: "aprf25",
@@ -313,6 +333,7 @@ const timedEvents: TimedEvent[] = [
   {
     name: "Shining Spring",
     eventType: EventType.SHINY,
+    eventCause: EventCause.APR_FOOLS,
     startDate: new Date(Date.UTC(2025, 4, 3)),
     endDate: new Date(Date.UTC(2025, 4, 13)),
     bannerKey: "spr25event",
@@ -354,6 +375,7 @@ const timedEvents: TimedEvent[] = [
   {
     name: "Pride 25",
     eventType: EventType.SHINY,
+    eventCause: EventCause.PRIDE,
     startDate: new Date(Date.UTC(2025, 5, 18)),
     endDate: new Date(Date.UTC(2025, 5, 30)),
     bannerKey: "pride2025",
@@ -383,6 +405,16 @@ const timedEvents: TimedEvent[] = [
   },
 ];
 
+const timedEvents: TimedEvent[] = [
+  {
+    name: "Autumn",
+    eventCause: EventCause.AUTUMN,
+    eventType: EventType.SHINY,
+    startDate: new Date(Date.UTC(2025, 10, 29)),
+    endDate: new Date(Date.UTC(2025, 10, 30)),
+  },
+];
+
 export class TimedEventManager {
   isActive(event: TimedEvent) {
     return event.startDate < new Date() && new Date() < event.endDate;
@@ -392,37 +424,30 @@ export class TimedEventManager {
     return timedEvents.find((te: TimedEvent) => this.isActive(te));
   }
 
-  isEventActive(): boolean {
-    return timedEvents.some((te: TimedEvent) => this.isActive(te));
+  activeEvents(): TimedEvent[] {
+    return timedEvents.filter((te: TimedEvent) => this.isActive(te));
   }
 
-  /**
-   * Check whether the current event is active and for April Fools.
-   * @returns Whether the April Fools event is currently active.
-   */
-  isAprilFoolsActive(): boolean {
-    return timedEvents.some(
-      te => this.isActive(te) && te.hasOwnProperty("bannerKey") && te.bannerKey!.startsWith("aprf"),
-    );
+  isEventForHolidayActive(holiday: EventCause) {
+    return this.activeEvents().some(te => te.eventCause === holiday);
+  }
+
+  isEventActive(): boolean {
+    return this.activeEvent() !== undefined;
   }
 
   activeEventHasBanner(): boolean {
-    const activeEvents = timedEvents.filter(te => this.isActive(te) && te.hasOwnProperty("bannerKey"));
-    return activeEvents.length > 0;
+    return this.activeEvents().some(te => !!te.bannerKey);
   }
 
   getShinyMultiplier(): number {
     let multiplier = 1;
-    const shinyEvents = timedEvents.filter(te => te.eventType === EventType.SHINY && this.isActive(te));
-    for (const se of shinyEvents) {
-      multiplier *= se.shinyMultiplier ?? 1;
-    }
-
+    this.activeEvents().forEach(te => (multiplier *= te.shinyMultiplier ?? 1));
     return multiplier;
   }
 
   getEventBannerFilename(): string {
-    return timedEvents.find((te: TimedEvent) => this.isActive(te))?.bannerKey ?? "";
+    return this.activeEvents().find(te => !!te.bannerKey)?.bannerKey ?? "";
   }
 
   getEventBannerLangs(): string[] {
@@ -477,22 +502,6 @@ export class TimedEventManager {
       .map(te => {
         if (te.delibirdyBuff != null) {
           ret.push(...te.delibirdyBuff);
-        }
-      });
-    return ret;
-  }
-
-  /**
-   * For events where there's a set weather for town biome (other biomes are hard)
-   * @returns Event weathers for town
-   */
-  getWeather(): WeatherPoolEntry[] {
-    const ret: WeatherPoolEntry[] = [];
-    timedEvents
-      .filter(te => this.isActive(te))
-      .map(te => {
-        if (te.weather != null) {
-          ret.push(...te.weather);
         }
       });
     return ret;
