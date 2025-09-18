@@ -1,15 +1,19 @@
+// biome-ignore-all lint/style/useUnifiedTypeSignatures: Rule does not allow stuff with JSDoc comments
+
 import type { FixedBattleConfig } from "#app/battle";
 import { globalScene } from "#app/global-scene";
 import { pokemonEvolutions } from "#balance/pokemon-evolutions";
 import { pokemonFormChanges } from "#data/pokemon-forms";
 import type { PokemonSpecies } from "#data/pokemon-species";
 import { ChallengeType } from "#enums/challenge-type";
+import { Challenges } from "#enums/challenges";
 import type { MoveId } from "#enums/move-id";
 import type { MoveSourceType } from "#enums/move-source-type";
 import type { SpeciesId } from "#enums/species-id";
 import type { EnemyPokemon, PlayerPokemon, Pokemon } from "#field/pokemon";
 import type { ModifierTypeOption } from "#modifiers/modifier-type";
-import type { DexAttrProps } from "#system/game-data";
+import type { DexEntry } from "#types/dex-data";
+import type { DexAttrProps, StarterDataEntry } from "#types/save-data";
 import { BooleanHolder, type NumberHolder } from "./common";
 import { getPokemonSpecies } from "./pokemon-utils";
 
@@ -45,6 +49,20 @@ export function applyChallenges(
   challengeType: ChallengeType.STARTER_COST,
   species: SpeciesId,
   cost: NumberHolder,
+): boolean;
+/**
+ * Apply all challenges that modify selectable starter data.
+ * @param challengeType {@link ChallengeType} ChallengeType.STARTER_SELECT_MODIFY
+ * @param speciesId {@link SpeciesId} The speciesId of the pokemon
+ * @param dexEntry {@link DexEntry} The pokedex data associated to the pokemon.
+ * @param starterDataEntry {@link StarterDataEntry} The starter data associated to the pokemon.
+ * @returns True if any challenge was successfully applied.
+ */
+export function applyChallenges(
+  challengeType: ChallengeType.STARTER_SELECT_MODIFY,
+  speciesId: SpeciesId,
+  dexEntry: DexEntry,
+  starterDataEntry: StarterDataEntry,
 ): boolean;
 /**
  * Apply all challenges that modify a starter after selection.
@@ -186,7 +204,7 @@ export function applyChallenges(challengeType: ChallengeType.SHOP, status: Boole
  * @param challengeType - {@linkcode ChallengeType.POKEMON_ADD_TO_PARTY}
  * @param pokemon - The pokemon being caught
  * @param status - Whether the pokemon can be added to the party or not
- * @return `true` if any challenge was sucessfully applied, `false` otherwise
+ * @returns `true` if any challenge was sucessfully applied, `false` otherwise
  */
 export function applyChallenges(
   challengeType: ChallengeType.POKEMON_ADD_TO_PARTY,
@@ -199,7 +217,7 @@ export function applyChallenges(
  * @param challengeType - {@linkcode ChallengeType.POKEMON_FUSION}
  * @param pokemon - The pokemon being checked
  * @param status - Whether the selected pokemon is allowed to fuse or not
- * @return `true` if any challenge was sucessfully applied, `false` otherwise
+ * @returns `true` if any challenge was sucessfully applied, `false` otherwise
  */
 export function applyChallenges(
   challengeType: ChallengeType.POKEMON_FUSION,
@@ -212,7 +230,7 @@ export function applyChallenges(
  * @param challengeType - {@linkcode ChallengeType.POKEMON_MOVE}
  * @param moveId - The move being checked
  * @param status - Whether the move can be used or not
- * @return `true` if any challenge was sucessfully applied, `false` otherwise
+ * @returns `true` if any challenge was sucessfully applied, `false` otherwise
  */
 export function applyChallenges(
   challengeType: ChallengeType.POKEMON_MOVE,
@@ -225,7 +243,7 @@ export function applyChallenges(
  * @param challengeType - {@linkcode ChallengeType.SHOP_ITEM}
  * @param shopItem - The item being checked
  * @param status - Whether the item should be added to the shop or not
- * @return `true` if any challenge was sucessfully applied, `false` otherwise
+ * @returns `true` if any challenge was sucessfully applied, `false` otherwise
  */
 export function applyChallenges(
   challengeType: ChallengeType.SHOP_ITEM,
@@ -238,7 +256,7 @@ export function applyChallenges(
  * @param challengeType - {@linkcode ChallengeType.WAVE_REWARD}
  * @param reward - The reward being checked
  * @param status - Whether the reward should be added to the reward options or not
- * @return `true` if any challenge was sucessfully applied, `false` otherwise
+ * @returns `true` if any challenge was sucessfully applied, `false` otherwise
  */
 export function applyChallenges(
   challengeType: ChallengeType.WAVE_REWARD,
@@ -250,7 +268,7 @@ export function applyChallenges(
  * Apply all challenges that prevent recovery from fainting
  * @param challengeType - {@linkcode ChallengeType.PREVENT_REVIVE}
  * @param status - Whether fainting is a permanent status or not
- * @return `true` if any challenge was sucessfully applied, `false` otherwise
+ * @returns `true` if any challenge was sucessfully applied, `false` otherwise
  */
 export function applyChallenges(challengeType: ChallengeType.PREVENT_REVIVE, status: BooleanHolder): boolean;
 
@@ -267,6 +285,9 @@ export function applyChallenges(challengeType: ChallengeType, ...args: any[]): b
           break;
         case ChallengeType.STARTER_COST:
           ret ||= c.applyStarterCost(args[0], args[1]);
+          break;
+        case ChallengeType.STARTER_SELECT_MODIFY:
+          ret ||= c.applyStarterSelectModify(args[0], args[1], args[2]);
           break;
         case ChallengeType.STARTER_MODIFY:
           ret ||= c.applyStarterModify(args[0]);
@@ -347,7 +368,7 @@ export function checkStarterValidForChallenge(species: PokemonSpecies, props: De
   }
   // We check the validity of every evolution and form change, and require that at least one is valid
   const speciesToCheck = [species.speciesId];
-  while (speciesToCheck.length) {
+  while (speciesToCheck.length > 0) {
     const checking = speciesToCheck.pop();
     // Linter complains if we don't handle this
     if (!checking) {
@@ -378,7 +399,7 @@ export function checkStarterValidForChallenge(species: PokemonSpecies, props: De
  * @param soft - If `true`, allow it if it could become valid through a form change.
  * @returns `true` if the species is considered valid.
  */
-function checkSpeciesValidForChallenge(species: PokemonSpecies, props: DexAttrProps, soft: boolean) {
+export function checkSpeciesValidForChallenge(species: PokemonSpecies, props: DexAttrProps, soft: boolean) {
   const isValidForChallenge = new BooleanHolder(true);
   applyChallenges(ChallengeType.STARTER_CHOICE, species, isValidForChallenge, props);
   if (!soft || !pokemonFormChanges.hasOwnProperty(species.speciesId)) {
@@ -406,4 +427,29 @@ function checkSpeciesValidForChallenge(species: PokemonSpecies, props: DexAttrPr
     });
   });
   return result;
+}
+
+/** @returns Whether the current game mode meets the criteria to be considered a Nuzlocke challenge */
+export function isNuzlockeChallenge(): boolean {
+  let isFreshStart = false;
+  let isLimitedCatch = false;
+  let isHardcore = false;
+  for (const challenge of globalScene.gameMode.challenges) {
+    // value is 0 if challenge is not active
+    if (!challenge.value) {
+      continue;
+    }
+    switch (challenge.id) {
+      case Challenges.FRESH_START:
+        isFreshStart = true;
+        break;
+      case Challenges.LIMITED_CATCH:
+        isLimitedCatch = true;
+        break;
+      case Challenges.HARDCORE:
+        isHardcore = true;
+        break;
+    }
+  }
+  return isFreshStart && isLimitedCatch && isHardcore;
 }

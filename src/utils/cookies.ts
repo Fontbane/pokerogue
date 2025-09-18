@@ -23,8 +23,8 @@ export function getCookie(cName: string): string {
   }
   const name = `${cName}=`;
   const ca = document.cookie.split(";");
-  for (let i = 0; i < ca.length; i++) {
-    let c = ca[i];
+  for (let c of ca) {
+    // ⚠️ DO NOT REPLACE THIS WITH C = C.TRIM() - IT BREAKS IN NON-CHROMIUM BROWSERS ⚠️
     while (c.charAt(0) === " ") {
       c = c.substring(1);
     }
