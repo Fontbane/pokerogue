@@ -187,13 +187,14 @@ export class UiInputs {
       case UiMode.COMMAND:
       case UiMode.MODIFIER_SELECT:
       case UiMode.MYSTERY_ENCOUNTER:
-        globalScene.ui.setOverlayMode(UiMode.MENU);
+        globalScene.ui.setOverlayMode(UiMode.EVENT_INFO);
         break;
       case UiMode.STARTER_SELECT:
       case UiMode.POKEDEX_PAGE:
         this.buttonTouch();
         break;
       case UiMode.MENU:
+      case UiMode.EVENT_INFO:
         globalScene.ui.revertMode();
         globalScene.playSound("ui/select");
         break;

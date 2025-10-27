@@ -361,7 +361,7 @@ const timedEvents: readonly TimedEvent[] = [
     name: "Pride 25",
     eventType: EventType.SHINY,
     startDate: new Date(Date.UTC(2025, 5, 18)),
-    endDate: new Date(Date.UTC(2025, 5, 30)),
+    endDate: new Date(Date.UTC(2025, 11, 30)),
     bannerKey: "pride2025",
     scale: 0.105,
     availableLangs: ["en", "de", "it", "fr", "ja", "ko", "es-ES", "es-419", "pt-BR", "zh-Hans", "zh-Hant"],

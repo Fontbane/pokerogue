@@ -61,6 +61,7 @@ import { executeIf } from "#utils/common";
 import i18next from "i18next";
 import { AdminUiHandler } from "./handlers/admin-ui-handler";
 import { RenameRunFormUiHandler } from "./handlers/rename-run-ui-handler";
+import { EventInfoUiHandler } from "#ui/event-info-ui-handler";
 
 const transitionModes = [
   UiMode.SAVE_SLOT,
@@ -178,6 +179,7 @@ export class UI extends Phaser.GameObjects.Container {
       new AdminUiHandler(),
       new MysteryEncounterUiHandler(),
       new ChangePasswordFormUiHandler(),
+      new EventInfoUiHandler(),
     ];
   }
 
