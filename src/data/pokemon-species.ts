@@ -75,6 +75,14 @@ export const normalForm: SpeciesId[] = [
   SpeciesId.CALYREX,
 ];
 
+const noShadow: SpeciesId[] = [SpeciesId.SANDYGAST];
+
+const shadowOffsets = {
+  "423-": -3,
+  "423-east": -3,
+  "530-": -8,
+};
+
 export type PokemonSpeciesFilter = (species: PokemonSpecies) => boolean;
 
 export abstract class PokemonSpeciesForm {
@@ -162,6 +170,19 @@ export abstract class PokemonSpeciesForm {
 
   set formIndex(formIndex: number) {
     this._formIndex = formIndex;
+  }
+
+  get hasShadow(): boolean {
+    return !noShadow.includes(this.speciesId);
+  }
+
+  get shadowOffset(): number {
+    const key = this.speciesId + "-" + this.getFormSpriteKey();
+    if (shadowOffsets.hasOwnProperty(key)) {
+      console.log("Shadow offset %d", shadowOffsets[key]);
+      return shadowOffsets[key];
+    }
+    return 0;
   }
 
   isOfType(type: number): boolean {

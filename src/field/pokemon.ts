@@ -486,6 +486,7 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     globalScene.fieldUI.addAt(this.battleInfo, 0);
 
     const getSprite = (hasShadow?: boolean) => {
+      hasShadow = hasShadow && this.species.hasShadow;
       const ret = globalScene.addPokemonSprite(
         this,
         0,
@@ -500,6 +501,7 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
         hasShadow: !!hasShadow,
         teraColor: getTypeRgb(this.getTeraType()),
         isTerastallized: this.isTerastallized,
+        yShadowOffset: this.species.shadowOffset,
       });
       return ret;
     };
