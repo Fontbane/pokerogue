@@ -6616,8 +6616,11 @@ export class EnemyPokemon extends Pokemon {
                * target score to -20
                */
               if (
-                (move.name.endsWith(" (N)") || !move.applyConditions(this, target, -1))
-                && ![MoveId.SUCKER_PUNCH, MoveId.UPPER_HAND, MoveId.THUNDERCLAP].includes(move.id)
+                ((move.name.endsWith(" (N)") || !move.applyConditions(this, target, -1))
+                  && ![MoveId.SUCKER_PUNCH, MoveId.UPPER_HAND, MoveId.THUNDERCLAP].includes(move.id))
+                || (move.hasAttr("SacrificialAttr")
+                  && globalScene.currentBattle.double
+                  && this.tempSummonData.waveTurnCount < 2)
               ) {
                 targetScore = -20;
               } else if (move.is("AttackMove")) {
