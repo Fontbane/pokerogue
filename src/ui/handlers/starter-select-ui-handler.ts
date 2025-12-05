@@ -799,13 +799,13 @@ export class StarterSelectUiHandler extends MessageUiHandler {
 
     this.type2Icon = globalScene.add.sprite(26, 98, getLocalizedSpriteKey("types")).setScale(0.5).setOrigin(0);
 
-    this.pokemonLuckLabelText = addTextObject(8, 89, i18next.t("common:luckIndicator"), TextStyle.WINDOW_ALT, {
+    this.pokemonLuckLabelText = addTextObject(8, 88, i18next.t("common:luckIndicator"), TextStyle.WINDOW_ALT, {
       fontSize: "56px",
     }).setOrigin(0);
 
     this.pokemonLuckText = addTextObject(
       8 + this.pokemonLuckLabelText.displayWidth + 2,
-      89,
+      88,
       "0",
       TextStyle.LUCK_VALUE,
       { fontSize: "56px" },
@@ -911,7 +911,7 @@ export class StarterSelectUiHandler extends MessageUiHandler {
     }
 
     this.teraIcon = globalScene.add
-      .sprite(48, 100, "button_tera")
+      .sprite(30, 101, "button_tera")
       .setName("terastallize-icon")
       .setFrame("fire")
       .setScale(0.5);
@@ -4148,9 +4148,6 @@ export class StarterSelectUiHandler extends MessageUiHandler {
         this.pokemonFormText.setText(formText);
 
         this.setTypeIcons(speciesForm.type1, speciesForm.type2);
-
-        this.teraIcon.setFrame(PokemonType[this.teraCursor].toLowerCase());
-        this.teraIcon.setVisible(!this.statsMode && this.allowTera);
       } else {
         this.pokemonAbilityText.setText("");
         this.pokemonPassiveText.setText("");
@@ -4221,9 +4218,13 @@ export class StarterSelectUiHandler extends MessageUiHandler {
     }
     if (type2 !== null) {
       this.type2Icon.setVisible(true).setFrame(PokemonType[type2].toLowerCase());
+      this.teraIcon.setPosition(48, 101);
     } else {
       this.type2Icon.setVisible(false);
+      this.teraIcon.setPosition(30, 101);
     }
+    this.teraIcon.setFrame(PokemonType[this.teraCursor].toLowerCase());
+    this.teraIcon.setVisible(!this.statsMode && this.allowTera);
   }
 
   popStarter(index: number): void {
