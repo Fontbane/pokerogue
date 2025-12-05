@@ -910,7 +910,11 @@ export class StarterSelectUiHandler extends MessageUiHandler {
       this.pokemonEggMovesContainer.add(eggMoveContainer);
     }
 
-    this.teraIcon = globalScene.add.sprite(85, 63, "button_tera").setName("terastallize-icon").setFrame("fire");
+    this.teraIcon = globalScene.add
+      .sprite(48, 100, "button_tera")
+      .setName("terastallize-icon")
+      .setFrame("fire")
+      .setScale(0.5);
 
     // The font size should be set per language
     const instructionTextSize = textSettings.instructionTextSize;
