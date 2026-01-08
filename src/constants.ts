@@ -118,3 +118,6 @@ export const RELEARN_MOVE = -1;
 
 /** Moves that can only be learned with an evolve */
 export const EVOLVE_MOVE = 0;
+
+/** Whether to use old timed events */
+export const USE_OLD_EVENTS = false;

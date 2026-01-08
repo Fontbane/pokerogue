@@ -14,6 +14,7 @@ import type { nil } from "#types/common";
 import { addTextObject } from "#ui/text";
 import { getPokemonSpecies } from "#utils/pokemon-utils";
 import i18next from "i18next";
+import { USE_OLD_EVENTS } from "./constants";
 
 export enum EventType {
   SHINY,
@@ -80,7 +81,7 @@ interface TimedEvent extends EventBanner {
   readonly dailyRunStartingItems?: readonly ModifierTypeKeys[];
 }
 
-const timedEvents: readonly TimedEvent[] = [
+const oldEvents: readonly TimedEvent[] = [
   {
     name: "Winter 25",
     eventType: EventType.SHINY,
@@ -490,12 +491,64 @@ const timedEvents: readonly TimedEvent[] = [
   },
 ];
 
+const timedEvents: readonly TimedEvent[] = [
+  {
+    name: "Hearts and Horses",
+    eventType: EventType.SHINY,
+    startDate: new Date(Date.UTC(2026, 1, 13)),
+    endDate: new Date(Date.UTC(2026, 1, 23)),
+    bannerKey: "heartshorses-event",
+    scale: 0.19,
+    availableLangs: ["en", "de", "it", "fr", "ja", "ko", "es-ES", "es-419", "pt-BR", "zh-Hans", "zh-Hant", "da", "ru"],
+    shinyEncounterMultiplier: 2,
+    shinyCatchMultiplier: 3,
+    luckBoost: 1,
+    upgradeUnlockedVouchers: true,
+    eventEncounters: [
+      { species: SpeciesId.NIDORAN_F },
+      { species: SpeciesId.NIDORAN_M },
+      { species: SpeciesId.CLEFFA },
+      { species: SpeciesId.SMOOCHUM },
+      { species: SpeciesId.LUVDISC },
+      { species: SpeciesId.UMBREON },
+      { species: SpeciesId.GALAR_PONYTA },
+      { species: SpeciesId.MUDBRAY },
+      { species: SpeciesId.ALOMOMOLA },
+      { species: SpeciesId.PONYTA },
+      { species: SpeciesId.TEDDIURSA },
+      { species: SpeciesId.FURFROU, formIndex: 1 }, // Heart Trim
+      { species: SpeciesId.ESPURR },
+      { species: SpeciesId.WOOBAT },
+      { species: SpeciesId.LUNATONE },
+      { species: SpeciesId.BLITZLE },
+      { species: SpeciesId.DARUMAKA },
+      { species: SpeciesId.INDEEDEE },
+      { species: SpeciesId.TANDEMAUS },
+      { species: SpeciesId.KELDEO },
+    ],
+    classicWaveRewards: [
+      { wave: 8, type: "SHINY_CHARM" },
+      { wave: 8, type: "ABILITY_CHARM" },
+      { wave: 8, type: "CATCHING_CHARM" },
+      { wave: 25, type: "SHINY_CHARM" },
+    ],
+    mysteryEncounterTierChanges: [{ mysteryEncounter: MysteryEncounterType.PART_TIMER, disable: true }],
+    dailyRunStartingItems: ["ABILITY_CHARM", "SHINY_CHARM", "HEALING_CHARM"],
+  },
+];
+
 export class TimedEventManager {
   /**
    * Whether the timed event manager is disabled.
    * Used to disable events in testing.
    */
   private disabled: boolean;
+
+  init() {
+    if (USE_OLD_EVENTS) {
+      (timedEvents as TimedEvent[]).push(...oldEvents);
+    }
+  }
 
   isActive(event: TimedEvent) {
     if (this.disabled) {
