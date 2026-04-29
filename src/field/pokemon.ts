@@ -390,7 +390,7 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
       this.isTerastallized = dataSource.isTerastallized;
       this.stellarTypesBoosted = dataSource.stellarTypesBoosted ?? [];
     } else {
-      this.id = randSeedInt(4294967296);
+      this.id = randSeedInt(4294967295);
       this.ivs = ivs || getIvsFromId(this.id);
 
       if (this.gender === undefined) {

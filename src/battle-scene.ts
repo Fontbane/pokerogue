@@ -944,7 +944,7 @@ export class BattleScene extends SceneBase {
     }
 
     if (boss && !dataSource) {
-      const secondaryIvs = getIvsFromId(randSeedInt(4294967296));
+      const secondaryIvs = getIvsFromId(randSeedInt(4294967295));
 
       for (let s = 0; s < pokemon.ivs.length; s++) {
         pokemon.ivs[s] = Math.round(
