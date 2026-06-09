@@ -6641,8 +6641,8 @@ export function initGenerationSeven(): SpeciesDataMapConfig {
       MoveId.LASH_OUT,
       MoveId.TERA_BLAST,
       MoveId.BODY_SLAM,
-      MoveId.EARTH_POWER,//ZA
-      MoveId.TRI_ATTACK,//ZA
+      MoveId.EARTH_POWER, //ZA
+      MoveId.TRI_ATTACK, //ZA
     ],
   };
   generationSevenSpeciesData[SpeciesId.DHELMISE] = {

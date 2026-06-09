@@ -2633,7 +2633,6 @@ export function initGenerationNine(): SpeciesDataMapConfig {
       MoveId.THROAT_CHOP,
       MoveId.POLTERGEIST,
       MoveId.GIGA_IMPACT,
-
     ],
   };
   generationNineSpeciesData[SpeciesId.TADBULB] = {

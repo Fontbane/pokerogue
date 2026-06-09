@@ -4826,11 +4826,7 @@ export function initGenerationEight(): SpeciesDataMapConfig {
       [46, MoveId.PLAY_ROUGH],
       [52, MoveId.FOUL_PLAY],
     ],
-    tms: [
-      ...generationEightSpeciesData[SpeciesId.IMPIDIMP].tms,
-      MoveId.IMPRISON,
-      MoveId.SHADOW_CLAW,
-    ],
+    tms: [...generationEightSpeciesData[SpeciesId.IMPIDIMP].tms, MoveId.IMPRISON, MoveId.SHADOW_CLAW],
   };
   generationEightSpeciesData[SpeciesId.GRIMMSNARL] = {
     species: new PokemonSpecies({

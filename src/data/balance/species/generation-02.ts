@@ -116,8 +116,8 @@ export function initGenerationTwo(): SpeciesDataMapConfig {
       MoveId.TAKE_DOWN,
       MoveId.CHARM,
       MoveId.FAKE_TEARS,
-      MoveId.DAZZLING_GLEAM,//ZA
-      MoveId.EARTH_POWER,//ZA
+      MoveId.DAZZLING_GLEAM, //ZA
+      MoveId.EARTH_POWER, //ZA
     ],
   };
   generationTwoSpeciesData[SpeciesId.BAYLEEF] = {
@@ -609,7 +609,6 @@ export function initGenerationTwo(): SpeciesDataMapConfig {
       MoveId.TRAILBLAZE,
       MoveId.CHILLING_WATER,
       MoveId.TAKE_DOWN,
-
     ],
   };
   generationTwoSpeciesData[SpeciesId.CROCONAW] = {
@@ -1421,7 +1420,7 @@ export function initGenerationTwo(): SpeciesDataMapConfig {
       MoveId.THROAT_CHOP,
       MoveId.SMART_STRIKE,
       MoveId.STOMPING_TANTRUM,
-      MoveId.VENOM_DRENCH
+      MoveId.VENOM_DRENCH,
     ],
   };
   generationTwoSpeciesData[SpeciesId.CROBAT] = {
@@ -4285,7 +4284,7 @@ export function initGenerationTwo(): SpeciesDataMapConfig {
       MoveId.TRAILBLAZE,
       MoveId.ALLURING_VOICE,
       MoveId.PSYCHIC_NOISE,
-      MoveId.SAFEGUARD,//ZA
+      MoveId.SAFEGUARD, //ZA
     ],
   };
   generationTwoSpeciesData[SpeciesId.UMBREON] = {
@@ -7965,11 +7964,7 @@ export function initGenerationTwo(): SpeciesDataMapConfig {
       [58, MoveId.BLIZZARD],
       [65, MoveId.THRASH],
     ],
-    tms: [
-      ...generationTwoSpeciesData[SpeciesId.SWINUB].tms, 
-      MoveId.HYPER_BEAM, 
-      MoveId.GIGA_IMPACT,
-      MoveId.THROAT_CHOP,],
+    tms: [...generationTwoSpeciesData[SpeciesId.SWINUB].tms, MoveId.HYPER_BEAM, MoveId.GIGA_IMPACT, MoveId.THROAT_CHOP],
   };
   generationTwoSpeciesData[SpeciesId.CORSOLA] = {
     species: new PokemonSpecies({

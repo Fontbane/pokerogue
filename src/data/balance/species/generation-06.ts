@@ -789,7 +789,7 @@ export function initGenerationSix(): SpeciesDataMapConfig {
       MoveId.LOW_KICK,
       MoveId.DARK_PULSE,
       MoveId.GUNK_SHOT,
-      MoveId.FLIP_TURN,//ZA
+      MoveId.FLIP_TURN, //ZA
     ],
   };
   generationSixSpeciesData[SpeciesId.GRENINJA] = {
@@ -1130,7 +1130,7 @@ export function initGenerationSix(): SpeciesDataMapConfig {
       MoveId.BRUTAL_SWING,
       MoveId.STOMPING_TANTRUM,
       MoveId.SCORCHING_SANDS,
-      MoveId.TRAILBLAZE,//ZA
+      MoveId.TRAILBLAZE, //ZA
     ],
   };
   generationSixSpeciesData[SpeciesId.FLETCHLING] = {
@@ -1279,7 +1279,7 @@ export function initGenerationSix(): SpeciesDataMapConfig {
       MoveId.FIRE_BLAST,
       MoveId.INCINERATE,
       MoveId.TEMPER_FLARE,
-      MoveId.BLAZE_KICK,//ZA
+      MoveId.BLAZE_KICK, //ZA
     ],
   };
   generationSixSpeciesData[SpeciesId.TALONFLAME] = {
@@ -4521,12 +4521,12 @@ export function initGenerationSix(): SpeciesDataMapConfig {
       MoveId.SNARL,
       MoveId.CONFIDE,
       MoveId.TERA_BLAST,
-      MoveId.DOUBLE_EDGE,//ZA
-      MoveId.ENDURE,//ZA
-      MoveId.FIRE_FANG,//ZA
-      MoveId.ICE_FANG,//ZA
-      MoveId.PSYCHIC_FANGS,//ZA
-      MoveId.THUNDER_FANG,//ZA
+      MoveId.DOUBLE_EDGE, //ZA
+      MoveId.ENDURE, //ZA
+      MoveId.FIRE_FANG, //ZA
+      MoveId.ICE_FANG, //ZA
+      MoveId.PSYCHIC_FANGS, //ZA
+      MoveId.THUNDER_FANG, //ZA
     ],
   };
   generationSixSpeciesData[SpeciesId.ESPURR] = {
