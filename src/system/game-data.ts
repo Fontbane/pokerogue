@@ -1984,11 +1984,14 @@ export class GameData {
     return abilityAttr & AbilityAttr.ABILITY_1 ? 0 : !species.ability2 || abilityAttr & AbilityAttr.ABILITY_2 ? 1 : 2;
   }
 
-  checkStarterAbilityIndexUnlocked(species: PokemonSpecies, abilityIndex: number): boolean {
-    if (!this.isRootSpeciesUnlocked(species) || abilityIndex > 2) {
-      return true;
-    }
-    const abilityAttr = this.starterData[species.getRootSpeciesId(true)].abilityAttr;
+  /**
+   * Checks if a starter has unlocked a particular ability index
+   * @param speciesId The Starter being checked
+   * @param abilityIndex The ability index being checked
+   * @returns Whether the specified ability has been unlocked for the specified starter
+   */
+  checkStarterAbilityIndexUnlocked(speciesId: StarterSpeciesId, abilityIndex: number): boolean {
+    const abilityAttr = this.starterData[speciesId].abilityAttr;
     return !!(abilityAttr & (1 << abilityIndex));
   }
 

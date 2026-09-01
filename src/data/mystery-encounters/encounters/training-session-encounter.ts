@@ -28,6 +28,7 @@ import { MysteryEncounterBuilder } from "#mystery-encounters/mystery-encounter";
 import { MysteryEncounterOptionBuilder } from "#mystery-encounters/mystery-encounter-option";
 import { PokemonData } from "#system/pokemon-data";
 import type { HeldModifierConfig } from "#types/held-modifier-config";
+import type { StarterSpeciesId } from "#types/starter-species-id";
 import type { OptionSelectItem } from "#types/ui-types";
 import { randSeedShuffle } from "#utils/common";
 import { getEnumValues } from "#utils/enums";
@@ -35,6 +36,13 @@ import i18next from "i18next";
 
 /** The i18n namespace for the encounter */
 const namespace = "mysteryEncounters/trainingSession";
+
+const IV_BAR_INTERVAL = 50;
+const IV_BAR_MAX = 5;
+const NATURE_BAR_INTERVAL = 40;
+const NATURE_BAR_MAX = 6;
+const ABILITY_BAR_INTERVAL = 30;
+const ABILITY_BAR_MAX = 6;
 
 /**
  * Training Session encounter.
@@ -102,7 +110,7 @@ export const TrainingSessionEncounter: MysteryEncounter = MysteryEncounterBuilde
 
         // Spawn light training session with chosen pokemon
         // Every 50 waves, add +1 boss segment, capping at 5
-        const segments = Math.min(2 + Math.floor(globalScene.currentBattle.waveIndex / 50), 5);
+        const segments = Math.min(2 + Math.floor(globalScene.currentBattle.waveIndex / IV_BAR_INTERVAL), IV_BAR_MAX);
         const modifiers = new ModifiersHolder();
         const config = getEnemyConfig(playerPokemon, segments, modifiers);
         globalScene.removePokemonFromPlayerParty(playerPokemon, false);
@@ -189,12 +197,21 @@ export const TrainingSessionEncounter: MysteryEncounter = MysteryEncounterBuilde
           // Return the options for nature selection
           return getEnumValues(Nature).map((nature: Nature) => {
             const newNature = !globalScene.gameData.checkSpeciesNatureUnlocked(pokemon.species, nature);
+            let label = getNatureName(nature, true, true, true);
+            let style: TextStyle = TextStyle.ME_OPTION_DEFAULT;
+            if (newNature) {
+              label = "(+) " + label;
+              style = TextStyle.ME_OPTION_SPECIAL;
+            }
+            const dud = nature === pokemon.nature;
             const option: OptionSelectItem = {
-              label: newNature
-                ? "(+) " + getNatureName(nature, true, true, true)
-                : getNatureName(nature, true, true, true),
-              style: newNature ? TextStyle.ME_OPTION_SPECIAL : TextStyle.WINDOW,
+              label,
+              style,
               handler: () => {
+                if (dud) {
+                  globalScene.ui.playError();
+                  return false;
+                }
                 // Pokemon and second option selected
                 encounter.setDialogueToken("nature", getNatureName(nature));
                 encounter.misc = {
@@ -221,7 +238,10 @@ export const TrainingSessionEncounter: MysteryEncounter = MysteryEncounterBuilde
 
         // Spawn medium training session with chosen pokemon
         // Every 40 waves, add +1 boss segment, capping at 6
-        const segments = Math.min(2 + Math.floor(globalScene.currentBattle.waveIndex / 40), 6);
+        const segments = Math.min(
+          2 + Math.floor(globalScene.currentBattle.waveIndex / NATURE_BAR_INTERVAL),
+          NATURE_BAR_MAX,
+        );
         const modifiers = new ModifiersHolder();
         const config = getEnemyConfig(playerPokemon, segments, modifiers);
         globalScene.removePokemonFromPlayerParty(playerPokemon, false);
@@ -276,11 +296,27 @@ export const TrainingSessionEncounter: MysteryEncounter = MysteryEncounterBuilde
           const optionSelectItems: OptionSelectItem[] = [];
           abilities.forEach((ability: Ability, index) => {
             if (!optionSelectItems.some(o => o.label === ability.name)) {
-              const newAbility = !globalScene.gameData.checkStarterAbilityIndexUnlocked(pokemon.species, index);
+              const newAbility = !globalScene.gameData.checkStarterAbilityIndexUnlocked(
+                pokemon.species.getRootSpeciesId() as StarterSpeciesId,
+                index,
+              );
+              const dud = pokemon.getAbility() === ability;
+              let style: TextStyle = TextStyle.ME_OPTION_DEFAULT;
+              let label = ability.name;
+              if (newAbility) {
+                style = TextStyle.ME_OPTION_SPECIAL;
+                label = "(+) " + label;
+              } else if (dud) {
+                style = TextStyle.WINDOW_ALT;
+              }
               const option: OptionSelectItem = {
-                label: newAbility ? "(+) " + ability.name : ability.name,
-                style: newAbility ? TextStyle.ME_OPTION_SPECIAL : TextStyle.WINDOW,
+                label,
+                style,
                 handler: () => {
+                  if (dud) {
+                    globalScene.ui.playError();
+                    return false;
+                  }
                   // Pokemon and ability selected
                   encounter.setDialogueToken("ability", ability.name);
                   encounter.misc = {
@@ -314,7 +350,10 @@ export const TrainingSessionEncounter: MysteryEncounter = MysteryEncounterBuilde
         // Spawn hard training session with chosen pokemon
         // Every 30 waves, add +1 boss segment, capping at 6
         // Also starts with +1 to all stats
-        const segments = Math.min(2 + Math.floor(globalScene.currentBattle.waveIndex / 30), 6);
+        const segments = Math.min(
+          2 + Math.floor(globalScene.currentBattle.waveIndex / ABILITY_BAR_INTERVAL),
+          ABILITY_BAR_MAX,
+        );
         const modifiers = new ModifiersHolder();
         const config = getEnemyConfig(playerPokemon, segments, modifiers);
         config.pokemonConfigs![0].tags = [BattlerTagType.MYSTERY_ENCOUNTER_POST_SUMMON];
