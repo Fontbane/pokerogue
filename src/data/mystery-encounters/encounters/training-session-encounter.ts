@@ -97,8 +97,11 @@ export const TrainingSessionEncounter: MysteryEncounter = MysteryEncounterBuilde
           };
         };
 
-        // Only Pokemon that are not KOed/legal can be trained
+        // Only Pokemon that are not KOed/legal and don't have perfect IVs can be trained
         const selectableFilter = (pokemon: Pokemon) => {
+          if (pokemon.ivs.every(iv => iv === 31)) {
+            return `${namespace}:alreadyMaxIv`;
+          }
           return isPokemonValidForEncounterOptionSelection(pokemon, `${namespace}:invalidSelection`);
         };
 
@@ -336,8 +339,11 @@ export const TrainingSessionEncounter: MysteryEncounter = MysteryEncounterBuilde
           return optionSelectItems;
         };
 
-        // Only Pokemon that are not KOed/legal can be trained
+        // Only Pokemon with more than one possible ability that are not KOed/legal can be trained
         const selectableFilter = (pokemon: Pokemon) => {
+          if (pokemon.getSpeciesForm().getAbilityCount() === 1) {
+            return `${namespace}:noOtherAbilities`;
+          }
           return isPokemonValidForEncounterOptionSelection(pokemon, `${namespace}:invalidSelection`);
         };
 
