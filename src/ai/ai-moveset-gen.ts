@@ -54,7 +54,11 @@ import { Stat } from "#enums/stat";
 import { StatusEffect } from "#enums/status-effect";
 import { WeatherType } from "#enums/weather-type";
 import type { EnemyPokemon, Pokemon } from "#field/pokemon";
-import { targetSleptOrComatoseCondition, userSleptOrComatoseCondition } from "#moves/move-condition";
+import {
+  targetSleptOrComatoseCondition,
+  userIsOfMoveTypeCondition,
+  userSleptOrComatoseCondition,
+} from "#moves/move-condition";
 import { isWeatherInstantCharge } from "#moves/move-utils";
 import { PokemonMove } from "#moves/pokemon-move";
 import type { Move, StatStageChangeAttr } from "#types/move-types";
@@ -1071,6 +1075,12 @@ function filterUselessMoves(pokemon: Pokemon, willTera: boolean): boolean {
         ))
       || ([MoveId.SOLAR_BEAM, MoveId.SOLAR_BLADE].includes(moveId) && !hasSunInstantCharge(pokemon))
       || (moveId === MoveId.VENOM_DRENCH && !canInflictPoison(pokemon))
+      || (willTera
+        && move.hasCondition(userIsOfMoveTypeCondition) // Burn Up and Double Shock should account for Tera
+        && !(
+          pokemon.teraType === move.type
+          || (pokemon.teraType === PokemonType.STELLAR && pokemon.isOfType(move.type))
+        ))
     ) {
       moveset.splice(i, 1);
       return true;

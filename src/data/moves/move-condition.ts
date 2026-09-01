@@ -307,3 +307,7 @@ export const targetSleptOrComatoseCondition = new MoveCondition(
 export const userSleptOrComatoseCondition = new MoveCondition(
   user => user.status?.effect === StatusEffect.SLEEP || user.hasAbility(AbilityId.COMATOSE),
 );
+
+export const userIsOfMoveTypeCondition = new MoveCondition((user: Pokemon, _target: Pokemon, move: Move) =>
+  user.isOfType(move.type, { returnOriginalTypesIfStellar: true }),
+);

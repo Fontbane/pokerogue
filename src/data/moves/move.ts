@@ -105,6 +105,7 @@ import {
   MoveRestriction,
   targetSleptOrComatoseCondition,
   upperHandCondition,
+  userIsOfMoveTypeCondition,
   userSleptOrComatoseCondition,
 } from "#moves/move-condition";
 import { frenzyMissFunc, getCounterAttackTarget, getMoveTargets } from "#moves/move-utils";
@@ -11778,7 +11779,7 @@ export function initMoves() {
       .attr(PositiveStatStagePowerAttr),
     new AttackMove(MoveId.BURN_UP, PokemonType.FIRE, MoveCategory.SPECIAL, 130, 100, 5, -1, 0, 7)
       // fail if the user is not currently Fire-type (including being Terastallized to Stellar)
-      .condition(user => user.isOfType(PokemonType.FIRE, { returnOriginalTypesIfStellar: true }), 2)
+      .condition(userIsOfMoveTypeCondition, 2)
       .attr(HealStatusEffectAttr, true, StatusEffect.FREEZE)
       .attr(AddBattlerTagAttr, BattlerTagType.BURNED_UP, true, false)
       .attr(RemoveTypeAttr, PokemonType.FIRE, user => {
