@@ -411,7 +411,7 @@ export class Trainer extends Phaser.GameObjects.Container {
         }
       }
 
-      let species = this.genNewPartyMemberSpecies(level, strength);
+      let species = this.genNewPartyMemberSpecies(level, strength, 0, index);
       if (useNewSpeciesPool) {
         species = speciesDataRegistry.getSpecies(randSeedItem(newSpeciesPool));
       } else if (template.isSameSpecies(index) && index > offset) {
@@ -448,7 +448,12 @@ export class Trainer extends Phaser.GameObjects.Container {
     return ret;
   }
 
-  genNewPartyMemberSpecies(level: number, strength: PartyMemberStrength, attempt?: number): PokemonSpecies {
+  genNewPartyMemberSpecies(
+    level: number,
+    strength: PartyMemberStrength,
+    attempt?: number,
+    index?: number,
+  ): PokemonSpecies {
     const battle = globalScene.currentBattle;
     const template = this.getPartyTemplate();
     let baseSpecies: PokemonSpecies;
@@ -461,7 +466,8 @@ export class Trainer extends Phaser.GameObjects.Container {
         tier = TrainerPoolTier.UNCOMMON;
       } else if (tierValue >= 6) {
         tier = TrainerPoolTier.RARE;
-      } else if (tierValue >= 1) {
+      } else if (tierValue >= 1 || this.getPartyTemplate().isSameSpecies(index ?? -1)) {
+        // Don't select UR as "same" species
         tier = TrainerPoolTier.SUPER_RARE;
       } else {
         tier = TrainerPoolTier.ULTRA_RARE;

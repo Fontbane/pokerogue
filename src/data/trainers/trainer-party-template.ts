@@ -91,7 +91,10 @@ export class TrainerPartyCompoundTemplate extends TrainerPartyTemplate {
     return super.getEvoThresholdKind(index);
   }
 
-  isSameSpecies(index: number): boolean {
+  isSameSpecies(index = -1): boolean {
+    if (index < 0) {
+      return super.isSameSpecies(index);
+    }
     let t = 0;
     for (const template of this.templates) {
       if (t + template.size > index) {
