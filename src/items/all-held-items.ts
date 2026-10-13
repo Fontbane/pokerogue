@@ -26,7 +26,7 @@ import { BerryHeldItemAttr } from "#items/berry";
 import { BypassSpeedChanceHeldItemAttr } from "#items/bypass-speed-chance";
 import { CritBoostHeldItemAttr, SpeciesCritBoostHeldItemAttr } from "#items/crit-booster";
 import { DamageMoneyRewardHeldItemAttr } from "#items/damage-money-reward";
-import { GimmighoulEvoTrackerHeldItem } from "#items/evo-tracker";
+import { GimmighoulEvoTrackerHeldItem, MoveUseEvoTrackerHeldItem } from "#items/evo-tracker";
 import { ExpBoosterHeldItemAttr } from "#items/exp-booster";
 import { FieldEffectHeldItemAttr } from "#items/field-effect";
 import { FlinchChanceHeldItemAttr } from "#items/flinch-chance";
@@ -249,6 +249,24 @@ const heldItems = {
     999,
     SpeciesId.GIMMIGHOUL,
     10,
+  ),
+  [HeldItemId.PRIMEAPE_EVO_TRACKER]: new MoveUseEvoTrackerHeldItem(
+    HeldItemId.PRIMEAPE_EVO_TRACKER,
+    999,
+    SpeciesId.PRIMEAPE,
+    20,
+  ),
+  [HeldItemId.STANTLER_EVO_TRACKER]: new MoveUseEvoTrackerHeldItem(
+    HeldItemId.STANTLER_EVO_TRACKER,
+    999,
+    SpeciesId.STANTLER,
+    20,
+  ),
+  [HeldItemId.QWILFISH_EVO_TRACKER]: new MoveUseEvoTrackerHeldItem(
+    HeldItemId.QWILFISH_EVO_TRACKER,
+    999,
+    SpeciesId.STANTLER,
+    20,
   ),
 } as const satisfies Readonly<Record<HeldItemId, CosmeticHeldItem | HeldItem>>;
 

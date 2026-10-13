@@ -8,6 +8,7 @@ import { AbilityId } from "#enums/ability-id";
 import { EggTier } from "#enums/egg-type";
 import { EvolutionItem } from "#enums/evolution-item";
 import { FormChangeItemId } from "#enums/form-change-item-id";
+import { HeldItemId } from "#enums/held-item-id";
 import { MoveId } from "#enums/move-id";
 import { PokemonType } from "#enums/pokemon-type";
 import { SpeciesFormKey } from "#enums/species-form-key";
@@ -8921,8 +8922,13 @@ export function initGenerationTwo(): SpeciesDataMapConfig {
       new SpeciesEvolution({
         speciesId: SpeciesId.WYRDEER,
         level: 31,
-        condition: { key: EvoCondKey.MOVE, move: MoveId.PSYSHIELD_BASH },
-        evoDelay: [35, 45, 55],
+        condition: {
+          key: EvoCondKey.EVO_MOVE_USE_TRACKER,
+          move: MoveId.PSYSHIELD_BASH,
+          count: 20,
+          tracker: HeldItemId.STANTLER_EVO_TRACKER,
+        },
+        evoDelay: [45, 55, 65],
       }),
     ],
     eggTier: EggTier.COMMON,

@@ -21,6 +21,7 @@ import { BiomeId } from "#enums/biome-id";
 import { EggTier } from "#enums/egg-type";
 import { EvolutionItem } from "#enums/evolution-item";
 import { FormChangeItemId } from "#enums/form-change-item-id";
+import { HeldItemId } from "#enums/held-item-id";
 import { MoveId } from "#enums/move-id";
 import { Nature } from "#enums/nature";
 import { PokemonType } from "#enums/pokemon-type";
@@ -13237,8 +13238,13 @@ export function initGenerationEight(): SpeciesDataMapConfig {
       new SpeciesEvolution({
         speciesId: SpeciesId.OVERQWIL,
         level: 32,
-        condition: { key: EvoCondKey.MOVE, move: MoveId.BARB_BARRAGE },
-        evoDelay: [38, 48, 58],
+        condition: {
+          key: EvoCondKey.EVO_MOVE_USE_TRACKER,
+          move: MoveId.BARB_BARRAGE,
+          count: 20,
+          tracker: HeldItemId.QWILFISH_EVO_TRACKER,
+        },
+        evoDelay: [45, 55, 65],
       }),
     ],
     eggTier: EggTier.RARE,

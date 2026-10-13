@@ -40,6 +40,7 @@ export const EvoCondKey = {
   GENDER: 13,
   NATURE: 14,
   HELD_ITEM: 15,
+  EVO_MOVE_USE_TRACKER: 16,
 } as const;
 
 export type EvolutionConditionData =
@@ -57,7 +58,8 @@ export type EvolutionConditionData =
   | { key: typeof EvoCondKey.NATURE; nature: Nature[] }
   | { key: typeof EvoCondKey.WEATHER; weather: WeatherType[] }
   | { key: typeof EvoCondKey.TYROGUE; move: TyrogueMove }
-  | { key: typeof EvoCondKey.SHEDINJA };
+  | { key: typeof EvoCondKey.SHEDINJA }
+  | { key: typeof EvoCondKey.EVO_MOVE_USE_TRACKER; move: MoveId; count: number; tracker: HeldItemId };
 
 export class SpeciesEvolutionCondition {
   public data: EvolutionConditionData[];
@@ -107,6 +109,8 @@ export class SpeciesEvolutionCondition {
           }
           case EvoCondKey.HELD_ITEM:
             return i18next.t(`pokemonEvolutions:heldItem.${toCamelCase(allHeldItems[cond.itemKey].name)}`);
+          case EvoCondKey.EVO_MOVE_USE_TRACKER:
+            return i18next.t("pokemonEvolutions:moveUseCount", { move: allMoves[cond.move].name, count: cond.count });
           case EvoCondKey.RANDOM_FORM:
             return null;
           default:
@@ -137,7 +141,7 @@ export class SpeciesEvolutionCondition {
               p.isOfType(cond.pkmnType, { includeTeraType: false, bypassSummonData: true, ignoreThirdType: true }),
             );
         case EvoCondKey.EVO_TREASURE_TRACKER:
-          return allHeldItems[HeldItemId.GIMMIGHOUL_EVO_TRACKER].getStackCount(pokemon) >= cond.value;
+          return pokemon.heldItemManager.getStack(HeldItemId.GIMMIGHOUL_EVO_TRACKER) >= cond.value;
         case EvoCondKey.GENDER:
           return cond.gender === (forFusion ? pokemon.fusionGender : pokemon.gender);
         case EvoCondKey.SHEDINJA: // Shedinja cannot be evolved into directly
@@ -162,11 +166,17 @@ export class SpeciesEvolutionCondition {
           return !!globalScene.gameData.dexData[cond.speciesCaught].caughtAttr;
         case EvoCondKey.HELD_ITEM:
           return pokemon.heldItemManager.hasItem(cond.itemKey);
+        case EvoCondKey.EVO_MOVE_USE_TRACKER:
+          return pokemon.heldItemManager.getStack(cond.tracker) >= cond.count;
         default:
           cond satisfies never;
           return false;
       }
     });
+  }
+
+  public getCondition(condKey: number): EvolutionConditionData | undefined {
+    return this.data.find(c => c.key === condKey);
   }
 }
 

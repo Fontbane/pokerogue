@@ -866,6 +866,7 @@ export class MoveEffectPhase extends PokemonPhase {
 
   public override end(): void {
     const user = this.getUserPokemon();
+    user.handleMoveTracker(this.move.id);
 
     /**
      * If this phase isn't for the invoked move's last strike (and we still have something to hit),

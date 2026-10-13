@@ -1,6 +1,7 @@
 import type { TrainerItemId } from "#enums/trainer-item-id";
 import type { ValueOf } from "type-fest";
 import { FormChangeItemId } from "./form-change-item-id";
+import { SpeciesId } from "./species-id";
 
 // #region Category-grouped IDs
 
@@ -113,6 +114,9 @@ export const HeldItemId = {
 
   // Evo trackers
   GIMMIGHOUL_EVO_TRACKER: 0x0a01,
+  PRIMEAPE_EVO_TRACKER: 0x0a02,
+  STANTLER_EVO_TRACKER: 0x0a03,
+  QWILFISH_EVO_TRACKER: 0x0a04,
 
   // All form change items
   ...FormChangeItemId,
@@ -235,3 +239,19 @@ export const berryItemIds = [
 ] as const;
 
 export type BerryItemId = (typeof berryItemIds)[number];
+
+export const speciesWithTrackers = [SpeciesId.PRIMEAPE, SpeciesId.STANTLER, SpeciesId.GIMMIGHOUL];
+
+export const evoTrackerForSpecies = {
+  [SpeciesId.GIMMIGHOUL]: HeldItemId.GIMMIGHOUL_EVO_TRACKER,
+  [SpeciesId.PRIMEAPE]: HeldItemId.PRIMEAPE_EVO_TRACKER,
+  [SpeciesId.STANTLER]: HeldItemId.STANTLER_EVO_TRACKER,
+  [SpeciesId.HISUI_QWILFISH]: HeldItemId.QWILFISH_EVO_TRACKER,
+} as const;
+
+export function getTrackerItemForSpecies(species: SpeciesId): HeldItemId | HeldItemCategoryId {
+  if (speciesWithTrackers.includes(species)) {
+    return evoTrackerForSpecies[species];
+  }
+  return HeldItemCategoryId.NONE;
+}

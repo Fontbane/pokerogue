@@ -21,10 +21,6 @@ abstract class EvoTrackerHeldItem extends CosmeticHeldItem {
 }
 
 export class GimmighoulEvoTrackerHeldItem extends EvoTrackerHeldItem {
-  get iconName(): string {
-    return "relic_gold";
-  }
-
   getStackCount(pokemon: Pokemon): number {
     const stackCount =
       pokemon.heldItemManager.getStack(this.id)
@@ -34,3 +30,5 @@ export class GimmighoulEvoTrackerHeldItem extends EvoTrackerHeldItem {
     return stackCount;
   }
 }
+
+export class MoveUseEvoTrackerHeldItem extends EvoTrackerHeldItem {}

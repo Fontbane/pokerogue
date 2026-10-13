@@ -14,7 +14,12 @@ import { getPokemonNameWithAffix } from "#app/messages";
 import { activeOverrides } from "#app/overrides";
 import type { AnySound } from "#audio/audio-manager";
 import { speciesEggMoves } from "#balance/egg-moves";
-import { FusionSpeciesFormEvolution, SpeciesFormEvolution, validateShedinjaEvo } from "#balance/pokemon-evolutions";
+import {
+  EvoCondKey,
+  FusionSpeciesFormEvolution,
+  SpeciesFormEvolution,
+  validateShedinjaEvo,
+} from "#balance/pokemon-evolutions";
 import { BASE_HIDDEN_ABILITY_RATE, BASE_SHINY_CHANCE, SHINY_EPIC_CHANCE, SHINY_VARIANT_CHANCE } from "#balance/rates";
 import type { FORCED_RIVAL_SIGNATURE_MOVES } from "#balance/signature-moves";
 import { getStarterValueFriendshipCap, TRAINER_MAX_FRIENDSHIP_WAVE, TRAINER_MIN_FRIENDSHIP } from "#balance/starters";
@@ -80,7 +85,14 @@ import { ExpGainsSpeed } from "#enums/exp-gains-speed";
 import { FieldPosition } from "#enums/field-position";
 import type { FormChangeItemId } from "#enums/form-change-item-id";
 import { HeldItemEffect } from "#enums/held-item-effect";
-import { type BerryItemId, HeldItemId } from "#enums/held-item-id";
+import {
+  type BerryItemId,
+  evoTrackerForSpecies,
+  getTrackerItemForSpecies,
+  HeldItemCategoryId,
+  HeldItemId,
+  speciesWithTrackers,
+} from "#enums/held-item-id";
 import { HitResult } from "#enums/hit-result";
 import { LearnMoveSituation } from "#enums/learn-move-situation";
 import { LearnableMoveSource } from "#enums/learnable-move-source";
@@ -5971,6 +5983,27 @@ export abstract class Pokemon extends Phaser.GameObjects.Container {
     }
     this.turnData.berriesEaten.push(berryType);
   }
+
+  handleMoveTracker(moveId: MoveId) {
+    if (!this.isPlayer()) {
+      return;
+    }
+    const evo = speciesDataRegistry
+      .getEvolutions(this.species.speciesId)
+      .find(e => e.condition?.data.find(d => d.key === EvoCondKey.EVO_MOVE_USE_TRACKER && d.move === moveId));
+    const fusionEvo = this.isFusion()
+      ? speciesDataRegistry
+          .getEvolutions(this.fusionSpecies!.speciesId)
+          .find(e => e.condition?.data.find(d => d.key === EvoCondKey.EVO_MOVE_USE_TRACKER && d.move === moveId))
+      : undefined;
+    const evoSpecies: SpeciesId = fusionEvo ? this.fusionSpecies!.speciesId : this.species.speciesId;
+    if (evo || fusionEvo) {
+      const tracker = getTrackerItemForSpecies(evoSpecies);
+      if (tracker) {
+        this.heldItemManager.add(tracker as HeldItemId);
+      }
+    }
+  }
 }
 
 export class PlayerPokemon extends Pokemon {
@@ -6320,11 +6353,9 @@ export class PlayerPokemon extends Pokemon {
           this.updateInfo(true).then(() => resolve());
         });
       };
-      if (preEvolution.speciesId === SpeciesId.GIMMIGHOUL) {
-        const evotracker = this.heldItemManager.hasItem(HeldItemId.GIMMIGHOUL_EVO_TRACKER);
-        if (evotracker) {
-          this.heldItemManager.remove(HeldItemId.GIMMIGHOUL_EVO_TRACKER, 0, true);
-        }
+      const tracker = getTrackerItemForSpecies(preEvolution.speciesId);
+      if (tracker && this.heldItemManager.hasItem(tracker)) {
+        this.heldItemManager.remove(tracker as HeldItemId, 0, true);
       }
       if (!globalScene.gameMode.isDaily || this.metBiome > -1) {
         globalScene.gameData.updateSpeciesDexIvs(this.species.speciesId, this.ivs);
@@ -6559,6 +6590,13 @@ export class PlayerPokemon extends Pokemon {
     if (this.level >= maxExpLevel) {
       this.exp = Math.max(getLevelTotalExp(this.level, this.species.growthRate), initialExp);
     }
+  }
+  getTrackerItem(): HeldItemId | HeldItemCategoryId {
+    const species = speciesWithTrackers.find(s => this.hasSpecies(s));
+    if (species) {
+      return evoTrackerForSpecies[species];
+    }
+    return HeldItemCategoryId.NONE;
   }
 }
 
