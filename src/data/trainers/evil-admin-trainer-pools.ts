@@ -428,7 +428,7 @@ const STAR_FIGHTING: TrainerTierPools = {
   [TrainerPoolTier.RARE]: [SpeciesId.QUAXLY],
 };
 
-export type EvilTeam =
+export type EvilTeamAdminPool =
   | "rocket_petrel"
   | "rocket_archer"
   | "rocket_ariana"
@@ -452,7 +452,7 @@ export type EvilTeam =
   | "star_fighting";
 
 /** Trainer pools for each evil admin team */
-export const evilAdminTrainerPools: Record<EvilTeam, TrainerTierPools> = {
+export const evilAdminTrainerPools: Record<EvilTeamAdminPool, TrainerTierPools> = {
   rocket_petrel: ROCKET_PETREL,
   rocket_archer: ROCKET_ARCHER,
   rocket_ariana: ROCKET_ARIANA,
